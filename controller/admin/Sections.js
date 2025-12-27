@@ -1,25 +1,85 @@
+// controllers/admin/sectionController.js
 const db = require("../../config/db");
 
 exports.AddSection = async (req, res) => {
   try {
-    console.log("api hit");
-    
-    const section_name = req.body.section_name;
-    const class_id = req.params.class_id; // 👈 from URL
+    const { class_id } = req.params;
+    const { section_name, room_number, teacher_id } = req.body;
 
-    if (!section_name) {
-      return res.status(400).json({ message: "section_name required" });
+    /* =====================
+       1️⃣ Validation
+    ===================== */
+    if (!class_id || !section_name) {
+      return res.status(400).json({
+        success: false,
+        message: "class_id and section_name are required"
+      });
     }
 
-    await db.query(
-      "INSERT INTO sections (section_name, class_id) VALUES (?, ?)",
-      [section_name, class_id]
+    /* =====================
+       2️⃣ Check duplicate (class_id + section_name)
+       Example: Class 3 + Section A already exists
+    ===================== */
+    const [existing] = await db.query(
+      `SELECT section_id 
+       FROM sections 
+       WHERE class_id = ? AND section_name = ?`,
+      [class_id, section_name]
     );
 
-    return res.json({ message: "Section added" });
+    if (existing.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: `Section '${section_name}' already exists for this class`
+      });
+    }
 
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    /* =====================
+       3️⃣ Insert section
+    ===================== */
+    await db.query(
+      `INSERT INTO sections 
+       (class_id, section_name, room_number, teacher_id)
+       VALUES (?, ?, ?, ?)`,
+      [
+        class_id,
+        section_name,
+        room_number || null,
+        teacher_id || null
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Section added successfully"
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    /* =====================
+       4️⃣ Foreign key error (teacher_id)
+    ===================== */
+    if (error.code === "ER_NO_REFERENCED_ROW_2") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid teacher selected"
+      });
+    }
+
+    /* =====================
+       5️⃣ Duplicate from DB constraint (backup safety)
+    ===================== */
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        message: "Section already exists for this class"
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
   }
 };
