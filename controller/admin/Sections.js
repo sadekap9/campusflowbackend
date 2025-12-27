@@ -40,11 +40,10 @@ exports.AddSection = async (req, res) => {
     await db.query(
       `INSERT INTO sections 
        (class_id, section_name, teacher_id)
-       VALUES (?, ?, ?, ?)`,
+       VALUES (?, ?, ?)`,
       [
         class_id,
         section_name,
-        room_number || null,
         teacher_id || null
       ]
     );
