@@ -5,7 +5,9 @@ exports.GetClass = async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
+        c.class_id,
         c.class_name,
+        s.section_id,
         s.section_name,
         t.name AS teacher_name,
         COUNT(st.student_id) AS student_count
