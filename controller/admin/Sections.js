@@ -4,7 +4,7 @@ const db = require("../../config/db");
 exports.AddSection = async (req, res) => {
   try {
     const { class_id } = req.params;
-    const { section_name, room_number, teacher_id } = req.body;
+    const { section_name,teacher_id } = req.body;
 
     /* =====================
        1️⃣ Validation
@@ -39,7 +39,7 @@ exports.AddSection = async (req, res) => {
     ===================== */
     await db.query(
       `INSERT INTO sections 
-       (class_id, section_name, room_number, teacher_id)
+       (class_id, section_name, teacher_id)
        VALUES (?, ?, ?, ?)`,
       [
         class_id,
