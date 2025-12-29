@@ -57,7 +57,7 @@ CREATE TABLE sections (
     section_name VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE CASCADE,
-    UNIQUE (class_id, section_name)
+    
 );
 
 -- =========================

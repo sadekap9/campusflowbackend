@@ -6,10 +6,11 @@ const { registerStudentProfile } = require("../auth/admin/RegisterStudent");
 const studentProfileUpload = require("../middleware/studentProfileUpload");
 const { registerTeacher } = require("../auth/admin/RegisterTeacher");
 const teacherUpload = require("../middleware/teacherUpload");
-const {AddClasses} = require ("../controller/admin/Classes")
+const {AddClasses} = require ("../controller/admin/classes/Classes")
 const {AddSection} = require ("../controller/admin/Sections");
 const { ListStudent } = require("../controller/admin/students/ListStudent");
-const { GetClass } = require("../controller/admin/students/GetClass");
+const { GetClass } = require("../controller/admin/classes/GetClass");
+const {UpdateClass , DeleteSection} = require("../controller/admin/classes/UpdateClass")
 // Login
 router.post("/login", Login);
 // register student
@@ -36,4 +37,9 @@ router.get("/getstudentlist", ListStudent)
 //get class
 
 router.get("/getclass", GetClass)
+
+router.put("/section/:section_id/teacher", UpdateClass);
+router.delete("/section/:section_id", DeleteSection);
+
+
 module.exports = router;
