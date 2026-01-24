@@ -57,6 +57,9 @@ const { UpdateTimetable } =
 
 const { AssignProxyTeacher } =
   require("../controller/admin/AssignProxyTeacher");
+  const {
+  AssignSubjectToTeacher
+} = require("../controller/admin/TeacherSubjectController");
 /* =========================================================
    ROUTES
 ========================================================= */
@@ -155,5 +158,9 @@ router.put("/timetable/:timetable_id", UpdateTimetable);
 // ✅ PROXY UPDATE
 router.put("/timetable/:timetable_id/proxy", AssignProxyTeacher);
 
-
+router.post(
+  "/assign-subject-teacher",
+  // verifyAdminToken,   // uncomment if admin protected
+  AssignSubjectToTeacher
+);
 module.exports = router;
