@@ -69,3 +69,71 @@ const hashedPassword = await hashPassword(plainPassword);
     res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.updateTeacher = async (req, res) => {
+  try {
+    const { teacher_id } = req.params;
+
+    const {
+      name,
+      email,
+      phone,
+      gender,
+      qualification,
+      experience_year,
+      address,
+      joining_date,
+      status
+    } = req.body;
+
+    const [existing] = await db.query(
+      "SELECT profile_image FROM teachers WHERE teacher_id = ?",
+      [teacher_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const profile_image = req.file
+      ? req.file.path
+      : existing[0].profile_image;
+
+    await db.query(
+      `UPDATE teachers SET
+        name = ?,
+        email = ?,
+        phone = ?,
+        gender = ?,
+        qualification = ?,
+        experience_year = ?,
+        address = ?,
+        joining_date = ?,
+        status = ?,
+        profile_image = ?
+      WHERE teacher_id = ?`,
+      [
+        name,
+        email,
+        phone,
+        gender,
+        qualification,
+        experience_year,
+        address,
+        joining_date,
+        status || "active",
+        profile_image,
+        teacher_id
+      ]
+    );
+
+    res.status(200).json({
+      message: "Teacher updated successfully",
+      profile_image
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};

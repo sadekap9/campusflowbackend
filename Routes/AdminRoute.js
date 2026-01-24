@@ -1,45 +1,119 @@
 const express = require("express");
 const router = express.Router();
 
+/* ===========================
+   AUTH / LOGIN
+=========================== */
 const { Login } = require("../auth/admin/Login");
-const { registerStudentProfile } = require("../auth/admin/RegisterStudent");
+
+/* ===========================
+   STUDENT MODULE
+=========================== */
+const {
+  registerStudentProfile,
+  updateStudentProfile
+} = require("../auth/admin/RegisterStudent");
+
 const studentProfileUpload = require("../middleware/studentProfileUpload");
-const { registerTeacher } = require("../auth/admin/RegisterTeacher");
+
+/* ===========================
+   TEACHER MODULE
+=========================== */
+const {
+  registerTeacher,
+  updateTeacher
+} = require("../auth/admin/RegisterTeacher");
+
 const teacherUpload = require("../middleware/teacherUpload");
-const {AddClasses} = require ("../controller/admin/classes/Classes")
-const {AddSection} = require ("../controller/admin/Sections");
-const { ListStudent } = require("../controller/admin/students/ListStudent");
+//const  {GetTeacher} = require("../controller/admin/teachers/GetTeacher")
+/* ===========================
+   CLASS & SECTION MODULE
+=========================== */
+const { AddClasses } = require("../controller/admin/classes/Classes");
 const { GetClass } = require("../controller/admin/classes/GetClass");
-const {UpdateClass , DeleteSection} = require("../controller/admin/classes/UpdateClass")
-// Login
+const {
+  UpdateClass,
+  DeleteSection
+} = require("../controller/admin/classes/UpdateClass");
+const { AddSection } = require("../controller/admin/Sections");
+
+/* ===========================
+   STUDENT LIST (ADMIN)
+=========================== */
+const { ListStudent} = require("../controller/admin/students/ListStudent");
+const { GetStudent } = require("../controller/admin/students/GetStudent");
+
+
+const { ListTeacher } = require("../controller/admin/teachers/ListTeacher");
+const { GetTeacher } = require("../controller/admin/teachers/GetTeacher");
+
+
+/* =========================================================
+   ROUTES
+========================================================= */
+
+/* ---------- Admin Login ---------- */
 router.post("/login", Login);
-// register student
+
+/* ---------- Student APIs ---------- */
+
+// Register student
 router.post(
-  "/register",
+  "/students/register",
   studentProfileUpload.single("profile_image"),
   registerStudentProfile
 );
-//register teacher
+
+// Update student
+router.put(
+  "/students/:student_id",
+  studentProfileUpload.single("profile_image"),
+  updateStudentProfile
+);
+
+// Get student list
+router.get("/students", ListStudent);
+// Get single student (Admin)
+router.get("/students/:student_id", GetStudent);
+
+
+// Get teacher list (Admin)
+router.get("/teachers", ListTeacher);
+router.get("/teachers/:teacher_id",GetTeacher);
+
+/* ---------- Teacher APIs ---------- */
+
+// Register teacher
 router.post(
-  "/teacher/register",
+  "/teachers/register",
   teacherUpload.single("profile_image"),
   registerTeacher
 );
 
-// add classes
+// Update teacher
+router.put(
+  "/teachers/:teacher_id",
+  teacherUpload.single("profile_image"),
+  updateTeacher
+);
+
+/* ---------- Class APIs ---------- */
+
+// Add class
 router.post("/classes", AddClasses);
-router.post("/:class_id/section", AddSection)
 
-// get student 
+// Get all classes
+router.get("/classes", GetClass);
 
-router.get("/getstudentlist", ListStudent)
+/* ---------- Section APIs ---------- */
 
-//get class
+// Add section to class
+router.post("/classes/:class_id/sections", AddSection);
 
-router.get("/getclass", GetClass)
+// Assign teacher / update section
+router.put("/sections/:section_id", UpdateClass);
 
-router.put("/section/:section_id/teacher", UpdateClass);
-router.delete("/section/:section_id", DeleteSection);
-
+// Delete section
+router.delete("/sections/:section_id", DeleteSection);
 
 module.exports = router;
