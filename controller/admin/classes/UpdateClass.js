@@ -14,7 +14,7 @@ exports.UpdateClass = async (req, res) => {
 
     const [result] = await db.query(
       "UPDATE sections SET  section_name = ?, teacher_id = ? WHERE section_id = ?",
-      [teacher_id, section_id,section_name]
+      [section_name, teacher_id, section_id]
     );
 
     if (result.affectedRows === 0) {
