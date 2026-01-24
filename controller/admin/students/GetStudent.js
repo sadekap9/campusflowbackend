@@ -1,5 +1,8 @@
 const db = require("../../../config/db");
 
+/* =========================
+   GET SINGLE STUDENT
+========================= */
 exports.GetStudent = async (req, res) => {
   try {
     const { student_id } = req.params;
@@ -43,7 +46,144 @@ exports.GetStudent = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("GetStudent error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+/* =========================
+   UPDATE STUDENT
+========================= */
+exports.UpdateStudent = async (req, res) => {
+  try {
+    const { student_id } = req.params;
+
+    const {
+      full_name,
+      mother_name,
+      father_name,
+      blood_group,
+      class_id,
+      section_id,
+      admission_date,
+      date_of_birth,
+      gender,
+      address,
+      city,
+      state,
+      pincode,
+      guardian_name,
+      guardian_phone,
+      status
+    } = req.body;
+
+    // Check student exists
+    const [existing] = await db.query(
+      "SELECT student_id FROM student_profile WHERE student_id = ?",
+      [student_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    const profile_image = req.file
+      ? req.file.path.replace(/\\/g, "/")
+      : null;
+
+    await db.query(
+      `UPDATE student_profile SET
+        full_name = ?,
+        mother_name = ?,
+        father_name = ?,
+        blood_group = ?,
+        class_id = ?,
+        section_id = ?,
+        admission_date = ?,
+        date_of_birth = ?,
+        gender = ?,
+        address = ?,
+        city = ?,
+        state = ?,
+        pincode = ?,
+        guardian_name = ?,
+        guardian_phone = ?,
+        status = ?,
+        profile_image = COALESCE(?, profile_image)
+      WHERE student_id = ?`,
+      [
+        full_name,
+        mother_name,
+        father_name,
+        blood_group,
+        class_id,
+        section_id,
+        admission_date,
+        date_of_birth,
+        gender,
+        address,
+        city,
+        state,
+        pincode,
+        guardian_name,
+        guardian_phone,
+        status,
+        profile_image,
+        student_id
+      ]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Student updated successfully"
+    });
+
+  } catch (error) {
+    console.error("UpdateStudent error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+/* =========================
+   DELETE STUDENT
+========================= */
+exports.DeleteStudent = async (req, res) => {
+  try {
+    const { student_id } = req.params;
+
+    const [existing] = await db.query(
+      "SELECT student_id FROM student_profile WHERE student_id = ?",
+      [student_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    await db.query(
+      "DELETE FROM student_profile WHERE student_id = ?",
+      [student_id]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Student deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("DeleteStudent error:", error);
     res.status(500).json({
       success: false,
       message: "Server error"

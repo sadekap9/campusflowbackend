@@ -7,25 +7,35 @@ const router = express.Router();
 const { Login } = require("../auth/admin/Login");
 
 /* ===========================
-   STUDENT MODULE
+   MIDDLEWARES
 =========================== */
-const {
-  registerStudentProfile,
-  updateStudentProfile
-} = require("../auth/admin/RegisterStudent");
-
 const studentProfileUpload = require("../middleware/studentProfileUpload");
+const teacherUpload = require("../middleware/teacherUpload");
 
 /* ===========================
-   TEACHER MODULE
+   STUDENT CONTROLLER (NEW)
 =========================== */
 const {
-  registerTeacher,
-  updateTeacher
-} = require("../auth/admin/RegisterTeacher");
+  GetStudent,
+  UpdateStudent,
+  DeleteStudent
+} = require("../controller/admin/students/GetStudent");
 
-const teacherUpload = require("../middleware/teacherUpload");
-//const  {GetTeacher} = require("../controller/admin/teachers/GetTeacher")
+const { ListStudent } = require("../controller/admin/students/ListStudent");
+const { registerStudentProfile } = require("../auth/admin/RegisterStudent");
+
+/* ===========================
+   TEACHER CONTROLLER (NEW)
+=========================== */
+const {
+  GetTeacher,
+  UpdateTeacher,
+  DeleteTeacher
+} = require("../controller/admin/teachers/GetTeacher");
+
+const { ListTeacher } = require("../controller/admin/teachers/ListTeacher");
+const { registerTeacher } = require("../auth/admin/RegisterTeacher");
+
 /* ===========================
    CLASS & SECTION MODULE
 =========================== */
@@ -36,18 +46,17 @@ const {
   DeleteSection
 } = require("../controller/admin/classes/UpdateClass");
 const { AddSection } = require("../controller/admin/Sections");
+const {
+  AddTimetable,
+  GetTimetable,
+  DeleteTimetable
+} = require("../controller/admin/TimetableController");
 
-/* ===========================
-   STUDENT LIST (ADMIN)
-=========================== */
-const { ListStudent} = require("../controller/admin/students/ListStudent");
-const { GetStudent } = require("../controller/admin/students/GetStudent");
+const { UpdateTimetable } =
+  require("../controller/admin/UpdateTimetable");
 
-
-const { ListTeacher } = require("../controller/admin/teachers/ListTeacher");
-const { GetTeacher } = require("../controller/admin/teachers/GetTeacher");
-
-
+const { AssignProxyTeacher } =
+  require("../controller/admin/AssignProxyTeacher");
 /* =========================================================
    ROUTES
 ========================================================= */
@@ -64,22 +73,24 @@ router.post(
   registerStudentProfile
 );
 
+// List students
+router.get("/students", ListStudent);
+
+// Get single student
+router.get("/students/:student_id", GetStudent);
+
 // Update student
 router.put(
   "/students/:student_id",
   studentProfileUpload.single("profile_image"),
-  updateStudentProfile
+  UpdateStudent
 );
 
-// Get student list
-router.get("/students", ListStudent);
-// Get single student (Admin)
-router.get("/students/:student_id", GetStudent);
-
-
-// Get teacher list (Admin)
-router.get("/teachers", ListTeacher);
-router.get("/teachers/:teacher_id",GetTeacher);
+// Delete student
+router.delete(
+  "/students/:student_id",
+  DeleteStudent
+);
 
 /* ---------- Teacher APIs ---------- */
 
@@ -90,11 +101,23 @@ router.post(
   registerTeacher
 );
 
+// List teachers
+router.get("/teachers", ListTeacher);
+
+// Get single teacher
+router.get("/teachers/:teacher_id", GetTeacher);
+
 // Update teacher
 router.put(
   "/teachers/:teacher_id",
   teacherUpload.single("profile_image"),
-  updateTeacher
+  UpdateTeacher
+);
+
+// Delete teacher
+router.delete(
+  "/teachers/:teacher_id",
+  DeleteTeacher
 );
 
 /* ---------- Class APIs ---------- */
@@ -103,7 +126,7 @@ router.put(
 router.post("/classes", AddClasses);
 
 // Get all classes
-router.get("/classes", GetClass);
+router.get("/getclass", GetClass);
 
 /* ---------- Section APIs ---------- */
 
@@ -111,9 +134,26 @@ router.get("/classes", GetClass);
 router.post("/classes/:class_id/sections", AddSection);
 
 // Assign teacher / update section
-router.put("/sections/:section_id", UpdateClass);
+router.put("/sections/:section_id/teacher", UpdateClass);
 
 // Delete section
-router.delete("/sections/:section_id", DeleteSection);
+router.delete("/section/:section_id", DeleteSection);
+/* ---------- Timetable APIs ---------- */
+
+// Add timetable entry
+router.post("/timetable", AddTimetable);
+
+// Get timetable (class + section)
+router.get("/timetable", GetTimetable);
+
+// Delete timetable entry
+router.delete("/timetable/:timetable_id", DeleteTimetable);
+
+// ✅ NORMAL UPDATE
+router.put("/timetable/:timetable_id", UpdateTimetable);
+
+// ✅ PROXY UPDATE
+router.put("/timetable/:timetable_id/proxy", AssignProxyTeacher);
+
 
 module.exports = router;

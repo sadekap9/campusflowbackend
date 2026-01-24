@@ -1,0 +1,91 @@
+const db = require("../../config/db");
+
+exports.AssignProxyTeacher = async (req, res) => {
+  try {
+    const { timetable_id } = req.params;
+    const { proxy_date } = req.body;
+
+    if (!proxy_date) {
+      return res.status(400).json({
+        message: "proxy_date is required"
+      });
+    }
+
+    // 1️⃣ Get timetable slot info
+    const [[slot]] = await db.query(
+      `SELECT day_of_week, period_id
+       FROM timetable
+       WHERE timetable_id = ?`,
+      [timetable_id]
+    );
+
+    if (!slot) {
+      return res.status(404).json({
+        message: "Timetable entry not found"
+      });
+    }
+
+    const { day_of_week, period_id } = slot;
+
+    // 2️⃣ Teachers PRESENT on that date
+    const [presentTeachers] = await db.query(
+      `SELECT teacher_id
+       FROM teacher_attendance
+       WHERE attendance_date = ?
+       AND status = 'present'`,
+      [proxy_date]
+    );
+
+    if (presentTeachers.length === 0) {
+      return res.status(400).json({
+        message: "No teachers are present on this date"
+      });
+    }
+
+    const presentIds = presentTeachers.map(t => t.teacher_id);
+
+    // 3️⃣ Teachers BUSY in same period
+    const [busyTeachers] = await db.query(
+      `SELECT teacher_id
+       FROM timetable
+       WHERE day_of_week = ?
+       AND period_id = ?
+       AND (
+         proxy_date IS NULL OR proxy_date != ?
+       )`,
+      [day_of_week, period_id, proxy_date]
+    );
+
+    const busyIds = busyTeachers.map(t => t.teacher_id);
+
+    // 4️⃣ Find FREE teacher
+    const availableTeacher = presentIds.find(
+      id => !busyIds.includes(id)
+    );
+
+    if (!availableTeacher) {
+      return res.status(400).json({
+        message: "No free teacher available for this period"
+      });
+    }
+
+    // 5️⃣ Assign proxy teacher
+    await db.query(
+      `UPDATE timetable SET
+        proxy_teacher_id = ?,
+        proxy_date = ?
+       WHERE timetable_id = ?`,
+      [availableTeacher, proxy_date, timetable_id]
+    );
+
+    res.json({
+      success: true,
+      message: "Proxy teacher assigned successfully",
+      proxy_teacher_id: availableTeacher
+    });
+
+  } catch (error) {
+    console.error("AssignProxyTeacher error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
