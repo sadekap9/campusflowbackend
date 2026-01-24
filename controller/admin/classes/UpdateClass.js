@@ -3,7 +3,7 @@ const db = require("../../../config/db");
 exports.UpdateClass = async (req, res) => {
   try {
     const { section_id } = req.params;   // from URL
-    const { teacher_id } = req.body;     // from body
+    const { teacher_id ,section_name} = req.body;     // from body
 
     // Validation
     if (!section_id || !teacher_id) {
@@ -13,8 +13,8 @@ exports.UpdateClass = async (req, res) => {
     }
 
     const [result] = await db.query(
-      "UPDATE sections SET teacher_id = ? WHERE section_id = ?",
-      [teacher_id, section_id]
+      "UPDATE sections SET  section_name = ?, teacher_id = ? WHERE section_id = ?",
+      [teacher_id, section_id,section_name]
     );
 
     if (result.affectedRows === 0) {
