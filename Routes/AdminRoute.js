@@ -60,6 +60,14 @@ const { AssignProxyTeacher } =
   const {
   AssignSubjectToTeacher
 } = require("../controller/admin/TeacherSubjectController");
+
+const {
+  CreateExam,
+  UpdateExam,
+  CancelExam,
+  CreateExamSubject
+} = require("../controller/admin/ExamController");
+
 /* =========================================================
    ROUTES
 ========================================================= */
@@ -163,4 +171,9 @@ router.post(
   // verifyAdminToken,   // uncomment if admin protected
   AssignSubjectToTeacher
 );
+
+router.post("/exam", CreateExam);
+router.put("/exam/:exam_id", UpdateExam);
+router.put("/exam/:exam_id/cancel", CancelExam);
+router.post("/exam/subject", CreateExamSubject);
 module.exports = router;

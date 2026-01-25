@@ -21,13 +21,24 @@ exports.registerStudentProfile = async (req, res) => {
       state,
       pincode,
       guardian_name,
-      guardian_phone
+      guardian_phone,email,mobile_number
     } = req.body;
 
     // Required fields validation
-    if (!full_name ||  !class_id || !section_id || !admission_date) {
+    if (!full_name || !class_id || !section_id || !admission_date || !email) {
       return res.status(400).json({ message: "Required fields missing" });
     }
+
+    // Check if email already exists
+    const [existingStudent] = await db.query(
+      "SELECT student_id FROM student_profile WHERE email = ?",
+      [email]
+    );
+
+    if (existingStudent.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
     const plainPassword = generateRandomPassword();
     const hashedPassword = await hashPassword(plainPassword);
 
@@ -36,14 +47,14 @@ exports.registerStudentProfile = async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO student_profile (
-        full_name, mother_name, father_name,
+        full_name,email,phone ,mother_name, father_name,
        blood_group, class_id, section_id,
         admission_date, date_of_birth, gender,
         address, city, state, pincode,
         guardian_name, guardian_phone, profile_image,password
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
-        full_name, mother_name, father_name,
+        full_name,email,mobile_number,mother_name, father_name,
          blood_group, class_id, section_id,
         admission_date, date_of_birth, gender,
         address, city, state, pincode,
@@ -65,9 +76,7 @@ exports.registerStudentProfile = async (req, res) => {
 
   } catch (error) {
     console.error(error);
-
-
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: error.message || "Internal Server Error" });
   }
 };
 
@@ -81,6 +90,8 @@ exports.updateStudentProfile = async (req, res) => {
 
     const {
       full_name,
+      email,
+      mobile_number,
       mother_name,
       father_name,
       blood_group,
@@ -100,12 +111,23 @@ exports.updateStudentProfile = async (req, res) => {
 
     // Check student exists
     const [existing] = await db.query(
-      "SELECT profile_image FROM student_profile WHERE student_id = ?",
+      "SELECT profile_image, email FROM student_profile WHERE student_id = ?",
       [student_id]
     );
 
     if (existing.length === 0) {
       return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Email uniqueness check (if email is being changed)
+    if (email && email !== existing[0].email) {
+      const [emailCheck] = await db.query(
+        "SELECT student_id FROM student_profile WHERE email = ? AND student_id != ?",
+        [email, student_id]
+      );
+      if (emailCheck.length > 0) {
+        return res.status(400).json({ message: "Email already in use by another student" });
+      }
     }
 
     // Handle profile image update
@@ -117,6 +139,8 @@ exports.updateStudentProfile = async (req, res) => {
     await db.query(
       `UPDATE student_profile SET
         full_name = ?,
+        email = ?,
+        phone = ?,
         mother_name = ?,
         father_name = ?,
         blood_group = ?,
@@ -136,6 +160,8 @@ exports.updateStudentProfile = async (req, res) => {
       WHERE student_id = ?`,
       [
         full_name,
+        email,
+        mobile_number,
         mother_name,
         father_name,
         blood_group,

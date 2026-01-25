@@ -63,6 +63,8 @@ exports.UpdateStudent = async (req, res) => {
 
     const {
       full_name,
+      email,
+      mobile_number,
       mother_name,
       father_name,
       blood_group,
@@ -82,7 +84,7 @@ exports.UpdateStudent = async (req, res) => {
 
     // Check student exists
     const [existing] = await db.query(
-      "SELECT student_id FROM student_profile WHERE student_id = ?",
+      "SELECT student_id, email FROM student_profile WHERE student_id = ?",
       [student_id]
     );
 
@@ -93,6 +95,20 @@ exports.UpdateStudent = async (req, res) => {
       });
     }
 
+    // Email uniqueness check (if email is being changed)
+    if (email && email !== existing[0].email) {
+      const [emailCheck] = await db.query(
+        "SELECT student_id FROM student_profile WHERE email = ? AND student_id != ?",
+        [email, student_id]
+      );
+      if (emailCheck.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Email already in use by another student"
+        });
+      }
+    }
+
     const profile_image = req.file
       ? req.file.path.replace(/\\/g, "/")
       : null;
@@ -100,6 +116,8 @@ exports.UpdateStudent = async (req, res) => {
     await db.query(
       `UPDATE student_profile SET
         full_name = ?,
+        email = ?,
+        phone = ?,
         mother_name = ?,
         father_name = ?,
         blood_group = ?,
@@ -119,6 +137,8 @@ exports.UpdateStudent = async (req, res) => {
       WHERE student_id = ?`,
       [
         full_name,
+        email,
+        mobile_number,
         mother_name,
         father_name,
         blood_group,

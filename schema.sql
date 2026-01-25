@@ -14,30 +14,32 @@ CREATE TABLE admin (
 );
 
 CREATE TABLE student_profile (
-  student_id INT NOT NULL PRIMARY KEY,
+  student_id INT AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(150) NOT NULL,
-  mother_name VARCHAR(150) NOT NULL,
-  father_name VARCHAR(150) NOT NULL,
-  enrollment_no VARCHAR(50) NOT NULL UNIQUE,
- blood_group ENUM(
-    'A+','A-','B+','B-','AB+','AB-','O+','O-'
-  ) DEFAULT NULL,
+  email VARCHAR(100) NOT NULL UNIQUE,
+  phone VARCHAR(15) NOT NULL,
+  mother_name VARCHAR(150),
+  father_name VARCHAR(150),
+  enrollment_no VARCHAR(50) UNIQUE,
+  blood_group ENUM('A+','A-','B+','B-','AB+','AB-','O+','O-'),
   class_id INT NOT NULL,
   section_id INT NOT NULL,
   admission_date DATE NOT NULL,
-  date_of_birth DATE DEFAULT NULL,
-  gender ENUM('male','female','other') DEFAULT NULL,
-  address VARCHAR(255) DEFAULT NULL,
-  city VARCHAR(100) DEFAULT NULL,
-  state VARCHAR(100) DEFAULT NULL,
-  pincode VARCHAR(10) DEFAULT NULL,
-  guardian_name VARCHAR(100) DEFAULT NULL,
-  guardian_phone VARCHAR(15) DEFAULT NULL,
-
-  profile_image VARCHAR(255) DEFAULT NULL,
-
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) 
+  date_of_birth DATE,
+  gender ENUM('male','female','other'),
+  address VARCHAR(255),
+  city VARCHAR(100),
+  state VARCHAR(100),
+  pincode VARCHAR(10),
+  guardian_name VARCHAR(100),
+  guardian_phone VARCHAR(15),
+  profile_image VARCHAR(255),
+  password VARCHAR(255) NOT NULL,
+  status ENUM('active','inactive') DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (class_id) REFERENCES classes(class_id),
+  FOREIGN KEY (section_id) REFERENCES sections(section_id)
+); 
 
 -- =========================
 -- CLASSES
@@ -58,33 +60,6 @@ CREATE TABLE sections (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(class_id) ON DELETE CASCADE,
     
-);
-
--- =========================
--- STUDENT PROFILE
--- =========================
-CREATE TABLE student_profile (
-    profile_id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    full_name VARCHAR(150) NOT NULL,
-    enrollment_no VARCHAR(50) NOT NULL UNIQUE,
-    blood_group ENUM('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'),
-    class_id INT NOT NULL,
-    section_id INT NOT NULL,
-    admission_date DATE NOT NULL,
-    date_of_birth DATE,
-    gender ENUM('male', 'female', 'other'),
-    address VARCHAR(255),
-    city VARCHAR(100),
-    state VARCHAR(100),
-    pincode VARCHAR(10),
-    guardian_name VARCHAR(100),
-    guardian_phone VARCHAR(15),
-    profile_image VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
-    FOREIGN KEY (class_id) REFERENCES classes(class_id),
-    FOREIGN KEY (section_id) REFERENCES sections(section_id)
 );
 
 -- =========================

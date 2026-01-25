@@ -19,6 +19,17 @@ exports.registerTeacher = async (req, res) => {
     if (!name || !email || !phone || !joining_date) {
       return res.status(400).json({ message: "Required fields missing" });
     }
+
+    // Check if email already exists
+    const [existingTeacher] = await db.query(
+      "SELECT teacher_id FROM teachers WHERE email = ?",
+      [email]
+    );
+
+    if (existingTeacher.length > 0) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
 // Auto-generate password
 const plainPassword = generateRandomPassword();
 
