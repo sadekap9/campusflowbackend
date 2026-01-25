@@ -6,6 +6,8 @@ exports.ListStudent = async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
+        sp.student_id,
+        sp.enrollment_no,
         full_name,
         email,
         phone AS mobile_number,
