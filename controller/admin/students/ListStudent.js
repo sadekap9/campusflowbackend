@@ -30,7 +30,8 @@ exports.ListStudent = async (req, res) => {
         pincode,
         guardian_name,
         guardian_phone,
-        status
+        status,
+        profile_image
       FROM student_profile sp
       LEFT JOIN classes c 
         ON c.class_id = sp.class_id
