@@ -18,9 +18,11 @@ exports.AddTimetable = async (req, res) => {
   try {
     const {
       class_id,
+      class_name,
       section_id,
+      section_name,
       day_of_week,
-      period_id,
+      start_time,
       subject_id,
       room_no,
       academic_year
@@ -31,7 +33,7 @@ exports.AddTimetable = async (req, res) => {
       !class_id ||
       !section_id ||
       !day_of_week ||
-      !period_id ||
+      !start_time ||
       !subject_id ||
       !academic_year
     ) {
@@ -49,28 +51,6 @@ exports.AddTimetable = async (req, res) => {
     }
 
     await conn.beginTransaction();
-
-    /* ---------- Check break period ---------- */
-    const [[period]] = await conn.query(
-      "SELECT is_break FROM periods WHERE period_id = ?",
-      [period_id]
-    );
-
-    if (!period) {
-      await conn.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid period selected"
-      });
-    }
-
-    if (period.is_break === 1) {
-      await conn.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Cannot assign timetable during break period"
-      });
-    }
 
     /* ---------- Auto-pick teacher ---------- */
     const [[teacherMap]] = await conn.query(
@@ -98,16 +78,16 @@ exports.AddTimetable = async (req, res) => {
        WHERE class_id = ?
        AND section_id = ?
        AND day_of_week = ?
-       AND period_id = ?
+       AND start_time = ?
        AND status = 'active'`,
-      [class_id, section_id, day_of_week, period_id]
+      [class_id, section_id, day_of_week, start_time]
     );
 
     if (slot) {
       await conn.rollback();
       return res.status(409).json({
         success: false,
-        message: "Timetable slot already exists"
+        message: "Timetable slot already exists at this time"
       });
     }
 
@@ -116,34 +96,35 @@ exports.AddTimetable = async (req, res) => {
       `SELECT timetable_id FROM timetable
        WHERE teacher_id = ?
        AND day_of_week = ?
-       AND period_id = ?
+       AND start_time = ?
        AND status = 'active'`,
-      [teacher_id, day_of_week, period_id]
+      [teacher_id, day_of_week, start_time]
     );
 
     if (clash) {
       await conn.rollback();
       return res.status(409).json({
         success: false,
-        message: "Teacher already busy in this period"
+        message: "Teacher already busy at this time"
       });
     }
 
     /* ---------- Insert timetable ---------- */
     await conn.query(
       `INSERT INTO timetable
-       (class_id, section_id, day_of_week, period_id,
-        subject_id, teacher_id, room_no, academic_year, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+       (class_id, class_name, section_id, section_name, day_of_week, start_time,
+        subject_id, teacher_id, academic_year, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         class_id,
+        class_name,
         section_id,
+        section_name,
         day_of_week.toLowerCase(),
-        period_id,
+        start_time,
         subject_id,
         teacher_id,
-        room_no || null,
-        academic_year
+          academic_year
       ]
     );
 
@@ -182,16 +163,10 @@ exports.GetTimetable = async (req, res) => {
 
     const [rows] = await db.query(
       `SELECT
-        t.timetable_id,
-        t.day_of_week,
-        p.period_name,
-        p.start_time,
-        p.end_time,
+        t.*,
         s.subject_name,
-        CONCAT(te.first_name, ' ', te.last_name) AS teacher_name,
-        t.room_no
+        te.name AS teacher_name
       FROM timetable t
-      JOIN periods p ON p.period_id = t.period_id
       JOIN subjects s ON s.subject_id = t.subject_id
       JOIN teachers te ON te.teacher_id = t.teacher_id
       WHERE t.class_id = ?
@@ -200,7 +175,7 @@ exports.GetTimetable = async (req, res) => {
       ORDER BY
         FIELD(t.day_of_week,
           'monday','tuesday','wednesday','thursday','friday','saturday'),
-        p.start_time`,
+        t.start_time`,
       [class_id, section_id]
     );
 

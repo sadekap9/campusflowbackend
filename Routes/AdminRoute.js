@@ -68,6 +68,14 @@ const {
   CreateExamSubject
 } = require("../controller/admin/ExamController");
 
+const {
+  addSubject,
+  updateSubject,
+  deleteSubject,
+  listSubjects,
+  getSubject
+} = require("../controller/admin/SubjectController");
+
 /* =========================================================
    ROUTES
 ========================================================= */
@@ -176,4 +184,12 @@ router.post("/exam", CreateExam);
 router.put("/exam/:exam_id", UpdateExam);
 router.put("/exam/:exam_id/cancel", CancelExam);
 router.post("/exam/subject", CreateExamSubject);
+
+/* ---------- Subject APIs ---------- */
+router.get("/subjects", listSubjects);
+router.get("/subjects/:subject_id", getSubject);
+router.post("/subjects", addSubject);
+router.put("/subjects/:subject_id", updateSubject);
+router.delete("/subjects/:subject_id", deleteSubject);
+
 module.exports = router;
