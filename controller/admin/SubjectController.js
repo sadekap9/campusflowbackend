@@ -99,7 +99,7 @@ exports.deleteSubject = async (req, res) => {
     const { subject_id } = req.params;
 
     const [result] = await db.query(
-      "UPDATE subjects SET status = 'inactive' WHERE subject_id = ?",
+      "DELETE FROM subjects WHERE subject_id = ?",
       [subject_id]
     );
 

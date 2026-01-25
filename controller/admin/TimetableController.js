@@ -1,3 +1,4 @@
+//console.log("TimetableController.js loaded");
 const db = require("../../config/db");
 
 const VALID_DAYS = [
@@ -13,28 +14,31 @@ const VALID_DAYS = [
    ADD TIMETABLE ENTRY
 ========================= */
 exports.AddTimetable = async (req, res) => {
-  const conn = await db.getConnection();
+  console.log(">>> AddTimetable API hit <<<");
+  console.log("Request Body:", JSON.stringify(req.body, null, 2));
 
+  let conn;
   try {
+    conn = await db.getConnection();
+    console.log("Database connection acquired");
     const {
       class_id,
-      class_name,
       section_id,
-      section_name,
       day_of_week,
       start_time,
       subject_id,
-      room_no,
+      teacher_id,
       academic_year
     } = req.body;
 
-    /* ---------- Basic validation ---------- */
+    /* ---------- Validation ---------- */
     if (
       !class_id ||
       !section_id ||
       !day_of_week ||
       !start_time ||
       !subject_id ||
+      !teacher_id ||
       !academic_year
     ) {
       return res.status(400).json({
@@ -52,26 +56,6 @@ exports.AddTimetable = async (req, res) => {
 
     await conn.beginTransaction();
 
-    /* ---------- Auto-pick teacher ---------- */
-    const [[teacherMap]] = await conn.query(
-      `SELECT teacher_id
-       FROM teacher_subject
-       WHERE class_id = ?
-       AND subject_id = ?
-       AND status = 'active'`,
-      [class_id, subject_id]
-    );
-
-    if (!teacherMap) {
-      await conn.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "No teacher assigned for this subject in this class"
-      });
-    }
-
-    const teacher_id = teacherMap.teacher_id;
-
     /* ---------- Slot clash check ---------- */
     const [[slot]] = await conn.query(
       `SELECT timetable_id FROM timetable
@@ -87,7 +71,7 @@ exports.AddTimetable = async (req, res) => {
       await conn.rollback();
       return res.status(409).json({
         success: false,
-        message: "Timetable slot already exists at this time"
+        message: "Timetable slot already exists"
       });
     }
 
@@ -105,26 +89,24 @@ exports.AddTimetable = async (req, res) => {
       await conn.rollback();
       return res.status(409).json({
         success: false,
-        message: "Teacher already busy at this time"
+        message: "Teacher already busy"
       });
     }
 
     /* ---------- Insert timetable ---------- */
     await conn.query(
       `INSERT INTO timetable
-       (class_id, class_name, section_id, section_name, day_of_week, start_time,
+       (class_id, section_id, day_of_week, start_time,
         subject_id, teacher_id, academic_year, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
       [
         class_id,
-        class_name,
         section_id,
-        section_name,
         day_of_week.toLowerCase(),
         start_time,
         subject_id,
         teacher_id,
-          academic_year
+        academic_year
       ]
     );
 
@@ -132,23 +114,23 @@ exports.AddTimetable = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Timetable entry added successfully"
+      message: "Timetable added successfully"
     });
 
   } catch (err) {
-    await conn.rollback();
-    console.error("AddTimetable error:", err);
+    if (conn) await conn.rollback();
+    console.error("AddTimetable error details:", err);
     res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Server error: " + err.message
     });
   } finally {
-    conn.release();
+    if (conn) conn.release();
   }
 };
 
 /* =========================
-   GET TIMETABLE (NO PROXY)
+   GET TIMETABLE
 ========================= */
 exports.GetTimetable = async (req, res) => {
   try {
@@ -188,13 +170,13 @@ exports.GetTimetable = async (req, res) => {
     console.error("GetTimetable error:", err);
     res.status(500).json({
       success: false,
-      message: "Server error"
+      message: err.message
     });
   }
 };
 
 /* =========================
-   DELETE TIMETABLE (SOFT)
+   DELETE TIMETABLE
 ========================= */
 exports.DeleteTimetable = async (req, res) => {
   try {

@@ -8,7 +8,6 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     const {
       teacher_id,
       class_id,
-      section_id,
       subject_id
     } = req.body;
 
@@ -19,11 +18,11 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     /* =========================
        1️⃣ Validation
     ========================= */
-    if (!teacher_id || !class_id || !section_id || !subject_id) {
+    if (!teacher_id || !class_id || !subject_id) {
       return res.status(400).json({
         success: false,
         message:
-          "teacher_id, class_id, section_id and subject_id are required"
+          "teacher_id, class_id and subject_id are required"
       });
     }
 
@@ -34,10 +33,8 @@ exports.AssignSubjectToTeacher = async (req, res) => {
       `SELECT id, teacher_id
        FROM teacher_subject
        WHERE class_id = ?
-       AND section_id = ?
-       AND subject_id = ?
-       AND status = 'active'`,
-      [class_id, section_id, subject_id]
+       AND subject_id = ?`,
+      [class_id,subject_id]
     );
 
     /* =========================
@@ -51,12 +48,11 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     }
 
     /* =========================
-       4️⃣ Deactivate previous assignment
+       4️⃣ Delete previous assignment
     ========================= */
     if (existing.length > 0) {
       await db.query(
-        `UPDATE teacher_subject
-         SET status = 'inactive'
+        `DELETE FROM teacher_subject
          WHERE id = ?`,
         [existing[0].id]
       );
@@ -67,9 +63,9 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     ========================= */
     await db.query(
       `INSERT INTO teacher_subject
-       (teacher_id, class_id, section_id, subject_id, status, created_by)
-       VALUES (?, ?, ?, ?, 'active', ?)`,
-      [teacher_id, class_id, section_id, subject_id, created_by]
+       (teacher_id, class_id, subject_id, created_by)
+       VALUES (?, ?, ?, ?)`,
+      [teacher_id, class_id, subject_id, created_by]
     );
 
     return res.status(201).json({
@@ -85,3 +81,5 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     });
   }
 };
+
+
