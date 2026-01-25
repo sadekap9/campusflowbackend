@@ -11,6 +11,8 @@ exports.GetStudent = async (req, res) => {
       `SELECT
         student_id,
         enrollment_no,
+        email,
+        phone,
         full_name,
         mother_name,
         father_name,

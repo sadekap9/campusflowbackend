@@ -6,36 +6,31 @@ exports.ListStudent = async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        sp.student_id,
-        sp.full_name,
-        sp.enrollment_no,
-        sp.blood_group,
-
-        -- ✅ Class name instead of class_id
+        full_name,
+        email,
+        phone AS mobile_number,
+        mother_name,
+        father_name,
+        blood_group,
+        sp.class_id AS class_id,
         c.class_name AS class_name,
-
-        -- ✅ Section name instead of section_id
+        sp.section_id AS section_id,
         s.section_name AS section_name,
-
-        -- ✅ Gender text instead of code
         CASE 
-          WHEN sp.gender = 1 THEN 'Male'
-          WHEN sp.gender = 2 THEN 'Female'
-          WHEN sp.gender = 3 THEN 'Other'
+          WHEN gender = '1' THEN 'Male'
+          WHEN gender = '2' THEN 'Female'
+          WHEN gender = '3' THEN 'Other'
           ELSE 'Unknown'
         END AS gender,
-
-        sp.date_of_birth,
-        sp.admission_date,
-        sp.address,
-        sp.city,
-        sp.state,
-        sp.pincode,
-        sp.guardian_name,
-        sp.guardian_phone,
-        sp.profile_image,
-        sp.created_at
-
+        admission_date,
+        date_of_birth,
+        address,
+        city,
+        state,
+        pincode,
+        guardian_name,
+        guardian_phone,
+        status
       FROM student_profile sp
       LEFT JOIN classes c 
         ON c.class_id = sp.class_id
