@@ -9,6 +9,16 @@ exports.ListTeacher = async (req, res) => {
         name,
         email,
         phone,
+        CASE 
+          WHEN gender = 1 THEN 'Male'
+          WHEN gender = 2 THEN 'Female'
+          WHEN gender = 3 THEN 'Other'
+          ELSE 'Unknown'
+        END AS gender,
+        qualification,
+        experience_year,
+        address,
+        joining_date,
         status,
         profile_image
       FROM teachers

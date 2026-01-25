@@ -14,7 +14,12 @@ exports.GetTeacher = async (req, res) => {
         name,
         email,
         phone,
-        gender,
+        CASE 
+          WHEN gender = 1 THEN 'Male'
+          WHEN gender = 2 THEN 'Female'
+          WHEN gender = 3 THEN 'Other'
+          ELSE 'Unknown'
+        END AS gender,
         qualification,
         experience_year,
         address,
@@ -88,7 +93,6 @@ exports.UpdateTeacher = async (req, res) => {
         name = ?,
         email = ?,
         phone = ?,
-        gender = ?,
         qualification = ?,
         experience_year = ?,
         address = ?,
@@ -100,7 +104,6 @@ exports.UpdateTeacher = async (req, res) => {
         name,
         email,
         phone,
-        gender,
         qualification,
         experience_year,
         address,
