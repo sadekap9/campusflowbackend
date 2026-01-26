@@ -194,6 +194,69 @@ exports.CancelExam = async (req, res) => {
 };
 
 /* =========================
+   GET ALL EXAMS
+ ========================= */
+exports.GetAllExams = async (req, res) => {
+  try {
+    let query = `
+      SELECT * from exams
+    `;
+
+    const [rows] = await db.query(query);
+
+    return res.status(200).json({
+      success: true,
+      exams: rows
+    });
+
+  } catch (error) {
+    console.error("GetExams error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+/* =========================
+   GET EXAM SUBJECTS
+ ========================= */
+exports.GetExamSubjects = async (req, res) => {
+  try {
+    const { exam_id } = req.params;
+
+    if (!exam_id) {
+      return res.status(400).json({
+        success: false,
+        message: "exam_id is required"
+      });
+    }
+
+    const [rows] = await db.query(
+      `SELECT es.*, s.subject_name 
+       FROM exam_subjects es
+       JOIN subjects s ON es.subject_id = s.subject_id
+       WHERE es.exam_id = ?
+       ORDER BY es.exam_date ASC, es.start_time ASC`,
+      [exam_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      subjects: rows
+    });
+
+  } catch (error) {
+    console.error("GetExamSubjects error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+
+/* =========================
    CREATE EXAM SUBJECT
 ========================= */
 exports.CreateExamSubject = async (req, res) => {
@@ -250,21 +313,23 @@ exports.CreateExamSubject = async (req, res) => {
       });
     }
 
-    // Check if any other subject is scheduled for this class at the same date and time
+    // Check if any other subject is scheduled for this class at the same date and overlapping time
     const [timeClash] = await db.query(
       `SELECT es.exam_subject_id FROM exam_subjects es
        JOIN exams e ON es.exam_id = e.exam_id
        WHERE e.class_id = ? 
        AND es.exam_date = ? 
-       AND es.start_time = ?
-       AND e.status != 'cancelled'`,
-      [examInfo.class_id, exam_date, start_time]
+       AND e.status != 'cancelled'
+       AND (
+         (es.start_time < ? AND es.end_time > ?)
+       )`,
+      [examInfo.class_id, exam_date, end_time, start_time]
     );
 
     if (timeClash.length > 0) {
       return res.status(409).json({
         success: false,
-        message: "Another subject is already scheduled for this class at this time."
+        message: "Time conflict! Another subject is already scheduled for this class during this time range."
       });
     }
 
@@ -297,3 +362,95 @@ exports.CreateExamSubject = async (req, res) => {
     });
   }
 };
+
+/* =========================
+   UPDATE EXAM SUBJECT
+ ========================= */
+exports.UpdateExamSubject = async (req, res) => {
+  try {
+    const { exam_subject_id } = req.params;
+    const {
+      subject_id,
+      exam_date,
+      start_time,
+      end_time,
+      max_marks,
+      passing_marks
+    } = req.body;
+
+    if (!exam_subject_id) {
+      return res.status(400).json({
+        success: false,
+        message: "exam_subject_id is required"
+      });
+    }
+
+    // Get current subject info to check for clashes
+    const [[current]] = await db.query(
+      "SELECT exam_id FROM exam_subjects WHERE exam_subject_id = ?",
+      [exam_subject_id]
+    );
+
+    if (!current) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam subject not found"
+      });
+    }
+
+    const { exam_id } = current;
+
+    // Optional: Re-validate class-wide time conflict if time/date changes
+    if (exam_date && start_time && end_time) {
+      const [[examInfo]] = await db.query(
+        "SELECT class_id FROM exams WHERE exam_id = ?",
+        [exam_id]
+      );
+
+      const [timeClash] = await db.query(
+        `SELECT es.exam_subject_id FROM exam_subjects es
+         JOIN exams e ON es.exam_id = e.exam_id
+         WHERE e.class_id = ? 
+         AND es.exam_date = ? 
+         AND e.status != 'cancelled'
+         AND es.exam_subject_id != ?
+         AND (
+           (es.start_time < ? AND es.end_time > ?)
+         )`,
+        [examInfo.class_id, exam_date, exam_subject_id, end_time, start_time]
+      );
+
+      if (timeClash.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "Time conflict! Another subject is already scheduled for this class during this time range."
+        });
+      }
+    }
+
+    await db.query(
+      `UPDATE exam_subjects
+       SET subject_id = COALESCE(?, subject_id),
+           exam_date = COALESCE(?, exam_date),
+           start_time = COALESCE(?, start_time),
+           end_time = COALESCE(?, end_time),
+           max_marks = COALESCE(?, max_marks),
+           passing_marks = COALESCE(?, passing_marks)
+       WHERE exam_subject_id = ?`,
+      [subject_id, exam_date, start_time, end_time, max_marks, passing_marks, exam_subject_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Exam subject updated successfully"
+    });
+
+  } catch (error) {
+    console.error("UpdateExamSubject error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
