@@ -5,9 +5,9 @@ exports.UpdateTimetable = async (req, res) => {
 
   const [result] = await db.query(
     `UPDATE timetable SET
-      subject_id = COALESCE(?, subject_id),
-      teacher_id = COALESCE(?, teacher_id),
-      academic_year = COALESCE(?, academic_year),
+      subject_id = ?,
+      teacher_id = ?,
+      academic_year = ?,
       proxy_teacher_id = NULL,
       proxy_date = NULL
      WHERE timetable_id = ?`,
@@ -15,8 +15,8 @@ exports.UpdateTimetable = async (req, res) => {
   );
 
   if (result.affectedRows === 0) {
-    return res.status(404).json({ message: "Timetable not found" });
+    return res.status(404).json({ success: false, message: "Timetable not found" });
   }
 
-  res.json({ message: "Timetable updated successfully" });
+  res.json({ success: true, message: "Timetable updated successfully" });
 };
