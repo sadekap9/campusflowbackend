@@ -199,7 +199,9 @@ exports.CancelExam = async (req, res) => {
 exports.GetAllExams = async (req, res) => {
   try {
     let query = `
-      SELECT * from exams
+      SELECT e.*, c.class_name 
+      FROM exams e
+      JOIN classes c ON e.class_id = c.class_id
     `;
 
     const [rows] = await db.query(query);
