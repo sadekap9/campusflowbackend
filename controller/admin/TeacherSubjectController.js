@@ -30,7 +30,7 @@ exports.AssignSubjectToTeacher = async (req, res) => {
        2️⃣ Check existing ACTIVE assignment
     ========================= */
     const [existing] = await db.query(
-      `SELECT id, teacher_id
+      `SELECT teacher_subject_id, teacher_id
        FROM teacher_subject
        WHERE class_id = ?
        AND subject_id = ?`,
@@ -53,8 +53,8 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     if (existing.length > 0) {
       await db.query(
         `DELETE FROM teacher_subject
-         WHERE id = ?`,
-        [existing[0].id]
+         WHERE teacher_subject_id = ?`,
+        [existing[0].teacher_subject_id]
       );
     }
 
