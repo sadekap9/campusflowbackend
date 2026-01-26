@@ -432,12 +432,12 @@ exports.UpdateExamSubject = async (req, res) => {
 
     await db.query(
       `UPDATE exam_subjects
-       SET subject_id = COALESCE(?, subject_id),
-           exam_date = COALESCE(?, exam_date),
-           start_time = COALESCE(?, start_time),
-           end_time = COALESCE(?, end_time),
-           max_marks = COALESCE(?, max_marks),
-           passing_marks = COALESCE(?, passing_marks)
+       SET subject_id = ?,
+           exam_date = ?,
+           start_time = ?,
+           end_time = ?,
+           max_marks = ?,
+           passing_marks = ?
        WHERE exam_subject_id = ?`,
       [subject_id, exam_date, start_time, end_time, max_marks, passing_marks, exam_subject_id]
     );
