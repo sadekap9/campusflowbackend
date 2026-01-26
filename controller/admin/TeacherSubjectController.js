@@ -152,3 +152,54 @@ exports.GetAssignedTeachersByClass = async (req, res) => {
     });
   }
 };
+
+/* =========================
+   UPDATE ASSIGNED SUBJECT
+========================= */
+exports.UpdateAssignedSubject = async (req, res) => {
+  try {
+    const { teacher_subject_id } = req.params;
+    const { teacher_id, class_id, subject_id } = req.body;
+
+    if (!teacher_subject_id) {
+      return res.status(400).json({
+        success: false,
+        message: "teacher_subject_id is required"
+      });
+    }
+
+    // Check if the assignment exists
+    const [existing] = await db.query(
+      "SELECT * FROM teacher_subject WHERE teacher_subject_id = ?",
+      [teacher_subject_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found"
+      });
+    }
+
+    // Update query
+    await db.query(
+      `UPDATE teacher_subject 
+       SET teacher_id = ?,
+           class_id = ?,
+           subject_id = ?
+       WHERE teacher_subject_id = ?`,
+      [teacher_id, class_id, subject_id, teacher_subject_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assignment updated successfully"
+    });
+  } catch (error) {
+    console.error("UpdateAssignedSubject error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
