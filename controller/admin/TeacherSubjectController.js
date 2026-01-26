@@ -115,3 +115,40 @@ exports.GetAssignedSubjects = async (req, res) => {
     });
   }
 };
+
+
+exports.GetAssignedTeachersByClass = async (req, res) => {
+  try {
+    const { class_id } = req.params;
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        ts.teacher_subject_id,
+        ts.teacher_id,
+        ts.class_id,
+        ts.subject_id,
+        ts.status,
+        ts.created_at,
+        t.name AS teacher_name
+      FROM teacher_subject ts
+      JOIN teachers t ON ts.teacher_id = t.teacher_id
+      WHERE ts.class_id = ?
+        AND ts.status = 'active'
+      `,
+      [class_id]
+    );
+
+    res.json({
+      success: true,
+      total: rows.length,
+      assignments: rows
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
