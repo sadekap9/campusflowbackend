@@ -194,6 +194,41 @@ exports.CancelExam = async (req, res) => {
 };
 
 /* =========================
+   DELETE EXAM (ADMIN)
+ ========================= */
+exports.DeleteExam = async (req, res) => {
+  try {
+    const { exam_id } = req.params;
+
+    // 1. Delete associated subjects first
+    await db.query("DELETE FROM exam_subjects WHERE exam_id = ?", [exam_id]);
+
+    // 2. Delete the exam
+    const [result] = await db.query("DELETE FROM exams WHERE exam_id = ?", [exam_id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Exam and associated subjects deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("DeleteExam error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+
+/* =========================
    GET ALL EXAMS
  ========================= */
 exports.GetAllExams = async (req, res) => {
@@ -456,3 +491,35 @@ exports.UpdateExamSubject = async (req, res) => {
   }
 };
 
+/* =========================
+   DELETE EXAM SUBJECT
+ ========================= */
+exports.DeleteExamSubject = async (req, res) => {
+  try {
+    const { exam_subject_id } = req.params;
+
+    const [result] = await db.query(
+      "DELETE FROM exam_subjects WHERE exam_subject_id = ?",
+      [exam_subject_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Exam subject not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Exam subject deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("DeleteExamSubject error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
