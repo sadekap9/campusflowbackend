@@ -25,7 +25,9 @@ exports.ListTeacher = async (req, res) => {
         -- joined data
         ts.teacher_subject_id,
         ts.class_id,
+        c.class_name,
         ts.subject_id,
+        s.subject_name,
         ts.status AS subject_status,
         ts.created_at AS subject_assigned_at
 
@@ -33,6 +35,8 @@ exports.ListTeacher = async (req, res) => {
       LEFT JOIN teacher_subject ts
         ON ts.teacher_id = t.teacher_id
         AND ts.status = 'active'
+      LEFT JOIN classes c ON ts.class_id = c.class_id
+      LEFT JOIN subjects s ON ts.subject_id = s.subject_id
 
       ORDER BY t.teacher_id DESC
     `);

@@ -128,13 +128,15 @@ exports.GetAssignedTeachersByClass = async (req, res) => {
         ts.teacher_id,
         ts.class_id,
         ts.subject_id,
-        ts.status,
         ts.created_at,
-        t.name AS teacher_name
+        t.name AS teacher_name,
+        t.status,
+        IF(t.status = 0, 'Teacher is inactive', 'OK') AS message
       FROM teacher_subject ts
+     
       JOIN teachers t ON ts.teacher_id = t.teacher_id
-      WHERE ts.class_id = ?
-        AND ts.status = 'active'
+      WHERE ts.class_id = ? 
+      AND t.status = '1' 
       `,
       [class_id]
     );
