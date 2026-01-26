@@ -5,42 +5,53 @@ const db = require("../../../config/db");
 ========================= */
 exports.GetTeacher = async (req, res) => {
   try {
-    const { teacher_id } = req.params;
+    const { class_id } = req.query;
+
+    if (!class_id) {
+      return res.status(400).json({
+        success: false,
+        message: "class_id is required"
+      });
+    }
 
     const [rows] = await db.query(
-      `SELECT
-        teacher_id,
-        emp_id,
-        name,
-        email,
-        phone,
+      `SELECT 
+        t.teacher_id,
+        t.emp_id,
+        t.name,
+        t.email,
+        t.phone,
         CASE 
-          WHEN gender = 1 THEN 'Male'
-          WHEN gender = 2 THEN 'Female'
-          WHEN gender = 3 THEN 'Other'
+          WHEN t.gender = 1 THEN 'Male'
+          WHEN t.gender = 2 THEN 'Female'
+          WHEN t.gender = 3 THEN 'Other'
           ELSE 'Unknown'
         END AS gender,
-        qualification,
-        experience_year,
-        address,
-        joining_date,
-        status,
-        profile_image
-      FROM teachers
-      WHERE teacher_id = ?`,
-      [teacher_id]
+        t.qualification,
+        t.experience_year,
+        t.address,
+        t.joining_date,
+        t.status,
+        t.profile_image,
+        s.subject_name,
+        ts.teacher_type
+      FROM teachers t
+      JOIN teacher_subject ts ON t.teacher_id = ts.teacher_id
+      JOIN subjects s ON ts.subject_id = s.subject_id
+      WHERE ts.class_id = ?`,
+      [class_id]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Teacher not found"
+        message: "No teachers found for this class"
       });
     }
 
     res.status(200).json({
       success: true,
-      teacher: rows[0]
+      teachers: rows
     });
 
   } catch (error) {

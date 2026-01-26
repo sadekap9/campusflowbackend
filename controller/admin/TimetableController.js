@@ -1,4 +1,4 @@
-//console.log("TimetableController.js loaded");
+console.log("TimetableController.js loaded");
 const db = require("../../config/db");
 
 const VALID_DAYS = [

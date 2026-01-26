@@ -28,7 +28,6 @@ exports.CreateExam = async (req, res) => {
       exam_type,
       academic_year,
       class_id,
-      section_id,
       start_date,
       end_date
     } = req.body;
@@ -40,11 +39,27 @@ exports.CreateExam = async (req, res) => {
       });
     }
 
+    // Check if an exam already exists for this class on the same start date
+    const [existing] = await db.query(
+      `SELECT exam_id FROM exams 
+       WHERE class_id = ? 
+       AND start_date = ? 
+       AND status != 'cancelled'`,
+      [class_id, start_date]
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "An exam is already scheduled for this class on this date. Please update the existing exam instead."
+      });
+    }
+
     const [result] = await db.query(
       `INSERT INTO exams
-       (exam_type, academic_year, class_id, section_id, start_date, end_date, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'scheduled')`,
-      [exam_type, academic_year, class_id, section_id || null, start_date, end_date]
+       (exam_type, academic_year, class_id, start_date, end_date, status)
+       VALUES (?, ?, ?, ?, ?, 'scheduled')`,
+      [exam_type, academic_year, class_id, start_date, end_date]
     );
 
     return res.status(201).json({
@@ -72,7 +87,6 @@ exports.UpdateExam = async (req, res) => {
       exam_type,
       academic_year,
       class_id,
-      section_id,
       start_date,
       end_date
     } = req.body;
@@ -84,12 +98,30 @@ exports.UpdateExam = async (req, res) => {
       });
     }
 
+    // Check for clash if class_id or start_date is being updated
+    if (class_id && start_date) {
+      const [existing] = await db.query(
+        `SELECT exam_id FROM exams 
+         WHERE class_id = ? 
+         AND start_date = ? 
+         AND exam_id != ? 
+         AND status != 'cancelled'`,
+        [class_id, start_date, exam_id]
+      );
+
+      if (existing.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "Another exam is already scheduled for this class on this date."
+        });
+      }
+    }
+
     const [result] = await db.query(
       `UPDATE exams
        SET exam_type = ?,
            academic_year = ?,
            class_id = ?,
-           section_id = ?,
            start_date = ?,
            end_date = ?
        WHERE exam_id = ?
@@ -98,7 +130,6 @@ exports.UpdateExam = async (req, res) => {
         exam_type,
         academic_year,
         class_id,
-        section_id || null,
         start_date,
         end_date,
         exam_id
@@ -189,6 +220,51 @@ exports.CreateExamSubject = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "All fields are required"
+      });
+    }
+
+    // 1. Check if this specific subject is already added to this exam
+    const [existingSubject] = await db.query(
+      "SELECT exam_subject_id FROM exam_subjects WHERE exam_id = ? AND subject_id = ?",
+      [exam_id, subject_id]
+    );
+
+    if (existingSubject.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "This subject is already added to this exam."
+      });
+    }
+
+    // 2. Check for class-wide time conflict (same class, same date, same time)
+    // First, get the class_id and section_id for the given exam_id
+    const [[examInfo]] = await db.query(
+      "SELECT class_id FROM exams WHERE exam_id = ?",
+      [exam_id]
+    );
+
+    if (!examInfo) {
+      return res.status(404).json({
+        success: false,
+        message: "Parent exam not found"
+      });
+    }
+
+    // Check if any other subject is scheduled for this class at the same date and time
+    const [timeClash] = await db.query(
+      `SELECT es.exam_subject_id FROM exam_subjects es
+       JOIN exams e ON es.exam_id = e.exam_id
+       WHERE e.class_id = ? 
+       AND es.exam_date = ? 
+       AND es.start_time = ?
+       AND e.status != 'cancelled'`,
+      [examInfo.class_id, exam_date, start_time]
+    );
+
+    if (timeClash.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: "Another subject is already scheduled for this class at this time."
       });
     }
 

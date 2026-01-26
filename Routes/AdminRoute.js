@@ -59,7 +59,8 @@ const { UpdateTimetable } =
 const { AssignProxyTeacher } =
   require("../controller/admin/AssignProxyTeacher");
   const {
-  AssignSubjectToTeacher
+  AssignSubjectToTeacher,
+  GetAssignedSubjects
 } = require("../controller/admin/TeacherSubjectController");
 
 const {
@@ -175,11 +176,14 @@ router.put("/timetable/:timetable_id", UpdateTimetable);
 
 // ✅ PROXY UPDATE
 router.put("/timetable/:timetable_id/proxy", AssignProxyTeacher);
-
 router.post(
   "/assign-subject-teacher",
-  // verifyAdminToken,   // uncomment if admin protected
   AssignSubjectToTeacher
+);
+
+router.get(
+  "/assign-subject-teacher",
+  GetAssignedSubjects
 );
 
 router.post("/exam", CreateExam);

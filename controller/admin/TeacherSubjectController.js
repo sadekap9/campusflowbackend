@@ -81,5 +81,37 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     });
   }
 };
+/* =========================
+   GET ALL ASSIGNED SUBJECTS
+========================= */
+exports.GetAssignedSubjects = async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT 
+        ts.teacher_subject_id,
+        ts.teacher_id,
+        t.name AS teacher_name,
+        ts.class_id,
+        c.class_name,
+        ts.subject_id,
+        s.subject_name,
+        ts.created_at
+       FROM teacher_subject ts
+       LEFT JOIN teachers t ON ts.teacher_id = t.teacher_id
+       LEFT JOIN classes c ON ts.class_id = c.class_id
+       LEFT JOIN subjects s ON ts.subject_id = s.subject_id
+       ORDER BY ts.created_at DESC`
+    );
 
-
+    return res.status(200).json({
+      success: true,
+      data: rows
+    });
+  } catch (error) {
+    console.error("GetAssignedSubjects error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
