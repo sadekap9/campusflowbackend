@@ -6,8 +6,6 @@ exports.ListStudent = async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        sp.student_id,
-        sp.enrollment_no,
         full_name,
         email,
         phone AS mobile_number,
@@ -32,8 +30,7 @@ exports.ListStudent = async (req, res) => {
         pincode,
         guardian_name,
         guardian_phone,
-        status,
-        profile_image
+        status
       FROM student_profile sp
       LEFT JOIN classes c 
         ON c.class_id = sp.class_id

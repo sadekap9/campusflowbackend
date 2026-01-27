@@ -2,7 +2,8 @@ require("dotenv").config(); // MUST BE FIRST
 
 const express = require("express");
 const cors = require("cors");
-const AdminRoute = require("./Routes/AdminRoute")
+const AdminRoute = require("./Routes/AdminRoute");
+const TeacherRoute = require("./Routes/TeacherRoute");
 const db = require("./config/db");
 
 const app = express();
@@ -17,6 +18,8 @@ app.use("/uploads", express.static("uploads"));
 
 // Routes
 app.use("/api/admin", AdminRoute);
+app.use("/api/teacher", TeacherRoute);
+
 
 // DB Test
 (async () => {

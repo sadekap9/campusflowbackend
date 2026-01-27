@@ -3,10 +3,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.Login = async (req, res) => {
-  console.log("api hit");
+ // console.log("api hit");
   
   const { email, password } = req.body;
-  console.log("Received login request:", email, password);
+  //console.log("Received login request:", email, password);
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password required" });
@@ -20,7 +20,7 @@ exports.Login = async (req, res) => {
       "SELECT admin_id, name, email, password, role, status FROM admin WHERE email = ?",
       [email]
     );
-    console.log(rows);
+   // console.log(rows);
 
     if (rows.length === 0) {
       return res.status(401).json({ message: "Invalid email or password" });

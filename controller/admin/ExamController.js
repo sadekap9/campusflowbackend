@@ -31,7 +31,7 @@ exports.CreateExam = async (req, res) => {
       start_date,
       end_date
     } = req.body;
-
+console.log(start_date)
     if (!exam_type || !academic_year || !class_id || !start_date) {
       return res.status(400).json({
         success: false,
@@ -240,7 +240,7 @@ exports.GetAllExams = async (req, res) => {
     `;
 
     const [rows] = await db.query(query);
-
+console.log(rows)
     return res.status(200).json({
       success: true,
       exams: rows
@@ -277,7 +277,7 @@ exports.GetExamSubjects = async (req, res) => {
        ORDER BY es.exam_date ASC, es.start_time ASC`,
       [exam_id]
     );
-
+console.log(rows)
     return res.status(200).json({
       success: true,
       subjects: rows
