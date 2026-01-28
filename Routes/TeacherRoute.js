@@ -1,8 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const { TeacherLogin, ForgotPassword } = require("../auth/teacher/Login");
 const { GetTeacherTimetable, GetAssignedClassTimetable } = require("../controller/teacher/ViewTimetable");
 const { MarkAttendance, GetAttendance, UpdateAttendance, DeleteAttendance } = require("../controller/teacher/TeacherAttendanceController");
 const { GetAllAssignedStudents, GetSubjectStudents } = require("../controller/teacher/ViewStudents");
+
+/* =========================================================
+   AUTH ROUTES
+   ========================================================= */
+router.post("/login", TeacherLogin);
+router.post("/forgot-password", ForgotPassword);
 /* =========================================================
    TIMETABLE ROUTES
    ========================================================= */

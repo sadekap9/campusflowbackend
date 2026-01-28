@@ -36,5 +36,20 @@ const sendStudentCredentials = async (toEmail, password, enrollment_no) => {
 };
 
 
-module.exports = { sendTeacherCredentials, sendStudentCredentials };
+const sendForgotPasswordEmail = async (toEmail, newPassword) => {
+  await transporter.sendMail({
+    from: `"School Admin" <${process.env.EMAIL}>`,
+    to: toEmail,
+    subject: "Reset Password",
+    html: `
+      <h3>Password Reset Successful</h3>
+      <p>Hello,</p>
+      <p>Your password has been reset successfully. Please use the following temporary password to login:</p>
+      <p><b>New Password:</b> ${newPassword}</p>
+      <p>We recommend you change your password after logging in.</p>
+    `,
+  });
+};
+
+module.exports = { sendTeacherCredentials, sendStudentCredentials, sendForgotPasswordEmail };
 
