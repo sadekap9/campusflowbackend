@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { generateRandomPassword, hashPassword } = require("../../utils/password");
 const { sendForgotPasswordEmail } = require("../../config/mailer");
+const { teacherSessions } = require("../../utils/sessions");
 
 exports.TeacherLogin = async (req, res) => {
   if (!req.body) {
@@ -66,7 +67,10 @@ exports.TeacherLogin = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    // 5️⃣ Send response
+    // 5️⃣ Store this as the ONLY active session for this teacher
+    teacherSessions.set(teacher.teacher_id.toString(), token);
+
+    // 6️⃣ Send response
     res.status(200).json({
       success: true,
       message: "Login successful",
