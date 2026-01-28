@@ -63,9 +63,9 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     ========================= */
     await db.query(
       `INSERT INTO teacher_subject
-       (teacher_id, class_id, subject_id, created_by)
-       VALUES (?, ?, ?, ?)`,
-      [teacher_id, class_id, subject_id, created_by]
+       (teacher_id, class_id, subject_id)
+       VALUES (?, ?, ?)`,
+      [teacher_id, class_id, subject_id]
     );
 
     return res.status(201).json({
