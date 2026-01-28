@@ -5,6 +5,12 @@ const { generateRandomPassword, hashPassword } = require("../../utils/password")
 const { sendForgotPasswordEmail } = require("../../config/mailer");
 
 exports.TeacherLogin = async (req, res) => {
+  if (!req.body) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "Request body is missing" 
+    });
+  }
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -87,47 +93,47 @@ exports.TeacherLogin = async (req, res) => {
    FORGOT PASSWORD
 ========================= */
 exports.ForgotPassword = async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({
-      success: false,
-      message: "Email is required"
-    });
-  }
-
   try {
-    // 1️⃣ Check if teacher exists
-    const [rows] = await db.query(
-      "SELECT teacher_id FROM teachers WHERE email = ?",
-      [email]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({
         success: false,
-        message: "Teacher not found with this email"
+        message: "Email is required"
       });
     }
-
-    // 2️⃣ Generate new random password
+    // 1️⃣ Check if teacher exists AND is active in the database
+    // We select the email from the DB to ensure we only send to "stored" addresses
+    const [[teacher]] = await db.query(
+      "SELECT teacher_id, email, status FROM teachers WHERE email = ?",
+      [email]
+    );
+    if (!teacher) {
+      return res.status(404).json({
+        success: false,
+        message: "Teacher not found"
+      });
+    }
+    // 2️⃣ (Optional but recommended) Only allow reset for active accounts
+    if (teacher.status != '1' && teacher.status != 'active') {
+      return res.status(403).json({
+        success: false,
+        message: "Account is inactive. Cannot reset password."
+      });
+    }
+    // 3️⃣ Generate new secure random password using your utility
     const newPlainPassword = generateRandomPassword();
     const newHashedPassword = await hashPassword(newPlainPassword);
-
-    // 3️⃣ Update password in DB
+    // 4️⃣ Update password in DB
     await db.query(
-      "UPDATE teachers SET password = ? WHERE email = ?",
-      [newHashedPassword, email]
+      "UPDATE teachers SET password = ? WHERE teacher_id = ?",
+      [newHashedPassword, teacher.teacher_id]
     );
-
-    // 4️⃣ Send email with new password
-    await sendForgotPasswordEmail(email, newPlainPassword);
-
+    // 5️⃣ Send email ONLY to the email address stored in the database
+    await sendForgotPasswordEmail(teacher.email, newPlainPassword);
     res.status(200).json({
       success: true,
-      message: "New password has been sent to your email"
+      message: "A new password has been sent to your registered email address"
     });
-
   } catch (error) {
     console.error("Forgot Password Error:", error);
     res.status(500).json({
