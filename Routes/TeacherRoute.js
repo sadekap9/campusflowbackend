@@ -4,6 +4,12 @@ const { TeacherLogin, ForgotPassword } = require("../auth/teacher/Login");
 const { GetTeacherTimetable, GetAssignedClassTimetable } = require("../controller/teacher/ViewTimetable");
 const { MarkAttendance, GetAttendance, UpdateAttendance, DeleteAttendance } = require("../controller/teacher/TeacherAttendanceController");
 const { GetAllAssignedStudents, GetSubjectStudents } = require("../controller/teacher/ViewStudents");
+const { 
+  markAttendance: markStudentAttendance, 
+  getAttendance: getStudentAttendance, 
+  updateAttendance: updateStudentAttendance, 
+  deleteAttendance: deleteStudentAttendance 
+} = require("../controller/teacher/StudentAttendanceController");
 const authTeacher = require("../middleware/authTeacher");
 
 /* =========================================================
@@ -33,5 +39,14 @@ router.post("/attendance", authTeacher, MarkAttendance);
 router.get("/attendance", authTeacher, GetAttendance);
 router.patch("/attendance/:attendance_id", authTeacher, UpdateAttendance);
 router.delete("/attendance/:attendance_id", authTeacher, DeleteAttendance);
+
+/* =========================================================
+   STUDENT ATTENDANCE ROUTES (PROTECTED)
+   ========================================================= */
+
+router.post("/student-attendance/:teacher_id", authTeacher, markStudentAttendance);
+router.get("/student-attendance/:teacher_id", authTeacher, getStudentAttendance);
+router.patch("/student-attendance/:teacher_id/:attendance_id", authTeacher, updateStudentAttendance);
+router.delete("/student-attendance/:teacher_id/:attendance_id", authTeacher, deleteStudentAttendance);
 
 module.exports = router;
