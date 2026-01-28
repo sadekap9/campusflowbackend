@@ -1,5 +1,5 @@
 require("dotenv").config(); // MUST BE FIRST
-
+const bcrypt = require("bcryptjs");
 const express = require("express");
 const cors = require("cors");
 const AdminRoute = require("./Routes/AdminRoute");
@@ -30,8 +30,10 @@ app.use("/api/teacher", TeacherRoute);
   } catch (err) {
     console.error("❌ Database connection failed:", err.message);
     process.exit(1);
+    
   }
 })();
+
 
 // Health
 app.get("/", (req, res) => {
