@@ -26,6 +26,8 @@ exports.GetAllAssignedStudents = async (req, res) => {
         sp.gender,
         sp.profile_image,
         sp.status,
+        c.class_id,
+        sec.section_id,
         c.class_name,
         sec.section_name
       FROM student_profile sp
