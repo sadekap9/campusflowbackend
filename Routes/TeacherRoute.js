@@ -36,7 +36,7 @@ router.get("/subject-students/:teacher_id", authTeacher, GetSubjectStudents);
    ========================================================= */
 
 router.post("/attendance", authTeacher, MarkAttendance);
-router.get("/attendance", authTeacher, GetAttendance);
+router.get("/attendance/:teacher_id", authTeacher, GetAttendance);
 router.patch("/attendance/:attendance_id", authTeacher, UpdateAttendance);
 router.delete("/attendance/:attendance_id", authTeacher, DeleteAttendance);
 

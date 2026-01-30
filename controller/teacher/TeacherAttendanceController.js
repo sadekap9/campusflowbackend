@@ -1,65 +1,67 @@
 const db = require("../../config/db");
 
-/* =========================
-   MARK TEACHER ATTENDANCE (POST)
-   ========================= */
+/* =====================================================
+   1️⃣ MARK / UPDATE TEACHER ATTENDANCE (NO DUPLICATES)
+===================================================== */
 exports.MarkAttendance = async (req, res) => {
   try {
-    const { teacher_id, attendance_date, status } = req.body;
+    const { teacher_id, attendance_date, status, log_in, log_out } = req.body;
 
     if (!teacher_id || !attendance_date || !status) {
       return res.status(400).json({
         success: false,
-        message: "teacher_id, attendance_date, and status are required",
+        message: "teacher_id, attendance_date, and status are required"
       });
     }
 
-    // Check if attendance already marked for this teacher on this date
-    const [existing] = await db.query(
-      "SELECT attendance_id FROM teacher_attendance WHERE teacher_id = ? AND attendance_date = ?",
-      [teacher_id, attendance_date]
+    await db.query(
+      `INSERT INTO teacher_attendance
+       (teacher_id, attendance_date, status, log_in, log_out)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         status = VALUES(status),
+         log_in = COALESCE(VALUES(log_in), log_in),
+         log_out = COALESCE(VALUES(log_out), log_out)`,
+      [teacher_id, attendance_date, status, log_in || null, log_out || null]
     );
 
-    if (existing.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: "Attendance already marked for this teacher on this date",
-      });
-    }
-
-    const [result] = await db.query(
-      "INSERT INTO teacher_attendance (teacher_id, attendance_date, status) VALUES (?, ?, ?)",
-      [teacher_id, attendance_date, status]
-    );
-
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: "Attendance marked successfully",
-      attendance_id: result.insertId,
+      message: "Teacher attendance saved successfully"
     });
+
   } catch (error) {
-    console.error("MarkAttendance error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("MarkTeacherAttendance Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/* =========================
-   GET TEACHER ATTENDANCE (GET)
-   ========================= */
+/* =====================================================
+   2️⃣ GET TEACHER ATTENDANCE
+===================================================== */
 exports.GetAttendance = async (req, res) => {
   try {
     const { teacher_id, start_date, end_date } = req.query;
 
-    // Use teacher_id from query if provided, otherwise you might want to use req.teacher.teacher_id
-    // But for now, we just ensure we don't do 1=1 without any filter.
     if (!teacher_id) {
-       return res.status(400).json({ success: false, message: "teacher_id is required" });
+      return res.status(400).json({
+        success: false,
+        message: "teacher_id is required"
+      });
     }
 
-    let query = "SELECT * FROM teacher_attendance WHERE teacher_id = ?";
+    let query = `
+      SELECT 
+        attendance_id,
+        teacher_id,
+        attendance_date,
+        status,
+        log_in,
+        log_out
+      FROM teacher_attendance
+      WHERE teacher_id = ?
+    `;
+
     const params = [teacher_id];
 
     if (start_date && end_date) {
@@ -74,95 +76,87 @@ exports.GetAttendance = async (req, res) => {
 
     const [rows] = await db.query(query, params);
 
-    return res.status(200).json({
+    res.json({
       success: true,
       count: rows.length,
-      attendance: rows,
+      attendance: rows
     });
+
   } catch (error) {
-    console.error("GetAttendance error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("GetTeacherAttendance Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/* =========================
-   UPDATE TEACHER ATTENDANCE (PATCH)
-   ========================= */
+/* =====================================================
+   3️⃣ UPDATE TEACHER ATTENDANCE
+===================================================== */
 exports.UpdateAttendance = async (req, res) => {
   try {
     const { attendance_id } = req.params;
-    const { status, attendance_date } = req.body;
+    const { status, log_in, log_out } = req.body;
 
     if (!attendance_id) {
       return res.status(400).json({
         success: false,
-        message: "attendance_id is required",
+        message: "attendance_id is required"
       });
     }
 
     const [result] = await db.query(
-      "UPDATE teacher_attendance SET status = COALESCE(?, status), attendance_date = COALESCE(?, attendance_date) WHERE attendance_id = ?",
-      [status, attendance_date, attendance_id]
+      `UPDATE teacher_attendance
+       SET 
+         status = COALESCE(?, status),
+         log_in = COALESCE(?, log_in),
+         log_out = COALESCE(?, log_out)
+       WHERE attendance_id = ?`,
+      [status, log_in, log_out, attendance_id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Attendance record not found",
+        message: "Attendance record not found"
       });
     }
 
-    return res.status(200).json({
+    res.json({
       success: true,
-      message: "Attendance updated successfully",
+      message: "Teacher attendance updated successfully"
     });
+
   } catch (error) {
-    console.error("UpdateAttendance error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("UpdateTeacherAttendance Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-/* =========================
-   DELETE TEACHER ATTENDANCE (DELETE)
-   ========================= */
+/* =====================================================
+   4️⃣ DELETE TEACHER ATTENDANCE
+===================================================== */
 exports.DeleteAttendance = async (req, res) => {
   try {
     const { attendance_id } = req.params;
 
-    if (!attendance_id) {
-      return res.status(400).json({
-        success: false,
-        message: "attendance_id is required",
-      });
-    }
-
     const [result] = await db.query(
-      "DELETE FROM teacher_attendance WHERE attendance_id = ?",
+      `DELETE FROM teacher_attendance WHERE attendance_id = ?`,
       [attendance_id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        message: "Attendance record not found",
+        message: "Attendance record not found"
       });
     }
 
-    return res.status(200).json({
+    res.json({
       success: true,
-      message: "Attendance deleted successfully",
+      message: "Teacher attendance deleted successfully"
     });
+
   } catch (error) {
-    console.error("DeleteAttendance error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error("DeleteTeacherAttendance Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
