@@ -1,7 +1,7 @@
 const db = require("../../config/db");
 
 /* =====================================================
-   1️⃣ BULK MARK STUDENT ATTENDANCE
+   1️⃣ BULK MARK STUDENT ATTENDANCE (NO DUPLICATES EVER)
 ===================================================== */
 exports.markAttendance = async (req, res) => {
   const connection = await db.getConnection();
@@ -9,41 +9,41 @@ exports.markAttendance = async (req, res) => {
     const { teacher_id } = req.params;
     const { class_id, section_id, attendance_date, students } = req.body || {};
 
-    if (!class_id || !section_id || !attendance_date || !students || !Array.isArray(students)) {
+    if (!class_id || !section_id || !attendance_date || !Array.isArray(students)) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields or invalid students array."
+        message: "Invalid input"
       });
     }
 
-    // 1️⃣ SECURITY: Is this specific teacher_id assigned to this class/section?
+    // 🔐 SECURITY: Check teacher assignment
     const [assignment] = await connection.query(
-      `SELECT teacher_id FROM sections
+      `SELECT teacher_id FROM sections 
        WHERE class_id = ? AND section_id = ?`,
       [class_id, section_id]
     );
 
-    if (assignment.length === 0 || assignment[0].teacher_id != teacher_id) {
+    if (!assignment.length || assignment[0].teacher_id != teacher_id) {
       return res.status(403).json({
         success: false,
-        message: "Access denied. You are not the assigned teacher for this class/section."
+        message: "Access denied"
       });
     }
 
-    // Start Transaction for bulk operation
     await connection.beginTransaction();
 
-    // 2️⃣ PROCESS EACH STUDENT
-    for (const record of students) {
-      const { student_id, status } = record;
+    for (const { student_id, status } of students) {
+      if (!student_id || !status) continue;
 
-      if (!student_id || !status) continue; // Skip malformed records
-
+      // 🔥 SAFE INSERT (DB HANDLES DUPLICATES)
       await connection.query(
         `INSERT INTO attendance_student
-          (student_id, class_id, section_id, attendance_date, status)
+         (student_id, class_id, section_id, attendance_date, status)
          VALUES (?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE status = VALUES(status)`,
+         ON DUPLICATE KEY UPDATE
+           status = VALUES(status),
+           class_id = VALUES(class_id),
+           section_id = VALUES(section_id)`,
         [student_id, class_id, section_id, attendance_date, status]
       );
     }
@@ -52,7 +52,7 @@ exports.markAttendance = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Attendance for ${students.length} students processed successfully.`
+      message: "dupicates entry retry again"
     });
 
   } catch (error) {
@@ -72,12 +72,11 @@ exports.getAttendance = async (req, res) => {
     const { teacher_id } = req.params;
     const { class_id, section_id, date, student_id } = req.query;
 
-    // Build query to fetch attendance for students assigned to this teacher
     let query = `
       SELECT 
         a.attendance_id,
         a.student_id,
-        sp.full_name as student_name,
+        sp.full_name AS student_name,
         a.class_id,
         a.section_id,
         a.attendance_date,
@@ -85,7 +84,9 @@ exports.getAttendance = async (req, res) => {
         a.created_at
       FROM attendance_student a
       JOIN student_profile sp ON a.student_id = sp.student_id
-      JOIN sections sec ON a.class_id = sec.class_id AND a.section_id = sec.section_id
+      JOIN sections sec 
+        ON a.class_id = sec.class_id 
+       AND a.section_id = sec.section_id
       WHERE sec.teacher_id = ?
     `;
 
@@ -135,34 +136,37 @@ exports.updateAttendance = async (req, res) => {
     if (!status) {
       return res.status(400).json({
         success: false,
-        message: "Status is required. Ensure you are sending JSON with a 'status' field."
+        message: "Status is required"
       });
     }
 
-    // Security check: only the class teacher can update attendance
+    // 🔐 SECURITY CHECK
     const [record] = await db.query(
-      `SELECT a.class_id, a.section_id 
+      `SELECT 1
        FROM attendance_student a
-       JOIN sections sec ON a.class_id = sec.class_id AND a.section_id = sec.section_id
-       WHERE a.attendance_id = ? AND sec.teacher_id = ?`,
+       JOIN sections sec 
+         ON a.class_id = sec.class_id 
+        AND a.section_id = sec.section_id
+       WHERE a.attendance_id = ? 
+         AND sec.teacher_id = ?`,
       [attendance_id, teacher_id]
     );
 
-    if (record.length === 0) {
+    if (!record.length) {
       return res.status(403).json({
         success: false,
-        message: "Unauthorized to update this attendance record."
+        message: "Unauthorized"
       });
     }
 
-    const [result] = await db.query(
+    await db.query(
       `UPDATE attendance_student
        SET status = ?
        WHERE attendance_id = ?`,
       [status, attendance_id]
     );
 
-    res.status(200).json({
+    res.json({
       success: true,
       message: "Attendance updated successfully"
     });
@@ -180,28 +184,31 @@ exports.deleteAttendance = async (req, res) => {
   try {
     const { teacher_id, attendance_id } = req.params;
 
-    // Security check: only the class teacher can delete attendance
+    // 🔐 SECURITY CHECK
     const [record] = await db.query(
-      `SELECT a.class_id, a.section_id 
+      `SELECT 1
        FROM attendance_student a
-       JOIN sections sec ON a.class_id = sec.class_id AND a.section_id = sec.section_id
-       WHERE a.attendance_id = ? AND sec.teacher_id = ?`,
+       JOIN sections sec 
+         ON a.class_id = sec.class_id 
+        AND a.section_id = sec.section_id
+       WHERE a.attendance_id = ? 
+         AND sec.teacher_id = ?`,
       [attendance_id, teacher_id]
     );
 
-    if (record.length === 0) {
+    if (!record.length) {
       return res.status(403).json({
         success: false,
-        message: "Unauthorized to delete this attendance record."
+        message: "Unauthorized"
       });
     }
 
-    const [result] = await db.query(
+    await db.query(
       `DELETE FROM attendance_student WHERE attendance_id = ?`,
       [attendance_id]
     );
 
-    res.status(200).json({
+    res.json({
       success: true,
       message: "Attendance deleted successfully"
     });

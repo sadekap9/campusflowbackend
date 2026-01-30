@@ -18,7 +18,8 @@ const authTeacher = (req, res, next) => {
     // 2️⃣ Verify token integrity
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 3️⃣ SESSION CHECK: Is this the latest token for this teacher?
+    // 3️⃣ SESSION CHECK: (Commented out because it causes logout on server restart)
+    /*
     const validToken = teacherSessions.get(decoded.teacher_id.toString());
     
     if (!validToken || validToken !== token) {
@@ -27,6 +28,7 @@ const authTeacher = (req, res, next) => {
             message: "Your session has expired or you logged in from another device. Please login again."
         });
     }
+    */
 
     // 4️⃣ ROLE CHECK
     if (decoded.role !== "teacher") {
