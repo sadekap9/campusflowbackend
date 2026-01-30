@@ -53,13 +53,14 @@ exports.GetAttendance = async (req, res) => {
   try {
     const { teacher_id, start_date, end_date } = req.query;
 
-    let query = "SELECT * FROM teacher_attendance WHERE 1=1";
-    const params = [];
-
-    if (teacher_id) {
-      query += " AND teacher_id = ?";
-      params.push(teacher_id);
+    // Use teacher_id from query if provided, otherwise you might want to use req.teacher.teacher_id
+    // But for now, we just ensure we don't do 1=1 without any filter.
+    if (!teacher_id) {
+       return res.status(400).json({ success: false, message: "teacher_id is required" });
     }
+
+    let query = "SELECT * FROM teacher_attendance WHERE teacher_id = ?";
+    const params = [teacher_id];
 
     if (start_date && end_date) {
       query += " AND attendance_date BETWEEN ? AND ?";
