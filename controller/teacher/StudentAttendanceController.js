@@ -79,7 +79,7 @@ exports.getAttendance = async (req, res) => {
         sp.full_name AS student_name,
         a.class_id,
         a.section_id,
-        a.attendance_date,
+        DATE_FORMAT(a.attendance_date, '%Y-%m-%d') as attendance_date,
         a.status,
         a.created_at
       FROM attendance_student a

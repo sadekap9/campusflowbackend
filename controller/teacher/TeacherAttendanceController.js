@@ -56,7 +56,7 @@ exports.GetAttendance = async (req, res) => {
       SELECT 
         attendance_id,
         teacher_id,
-        attendance_date,
+        DATE_FORMAT(attendance_date, '%Y-%m-%d') as attendance_date,
         status,
         log_in,
         log_out

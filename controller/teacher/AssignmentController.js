@@ -1,15 +1,15 @@
 const db = require("../../config/db");
 
 /* =====================================================
-   1️⃣ CREATE ASSIGNMENT (POST)
+   1️⃣ CREATE ASSIGNMENT (ONLY SUBJECT TEACHER CAN POST)
 ===================================================== */
 exports.createAssignment = async (req, res) => {
   try {
+    const teacher_id = req.teacher.teacher_id; // 🔐 from JWT
     const {
       class_id,
       section_id,
       subject_id,
-      teacher_id,
       title,
       description,
       max_marks,
@@ -17,13 +17,34 @@ exports.createAssignment = async (req, res) => {
       due_date
     } = req.body;
 
-    if (!class_id || !section_id || !subject_id || !teacher_id || !title || !due_date) {
+    if (!class_id || !section_id || !subject_id || !title || !due_date) {
       return res.status(400).json({
         success: false,
         message: "Required fields missing"
       });
     }
 
+    /* 🔐 AUTHORIZATION CHECK
+       Is this teacher assigned to this subject + class?
+    */
+    const [assigned] = await db.query(
+      `SELECT teacher_subject_id 
+       FROM teacher_subject
+       WHERE teacher_id = ?
+         AND class_id = ?
+         AND subject_id = ?
+         AND status = 'active'`,
+      [teacher_id, class_id, subject_id]
+    );
+
+    if (assigned.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to post assignment for this subject"
+      });
+    }
+
+    /* ✅ CREATE ASSIGNMENT */
     const [result] = await db.query(
       `INSERT INTO assignments
        (class_id, section_id, subject_id, teacher_id, title, description, max_marks, passing_marks, due_date)
@@ -54,12 +75,26 @@ exports.createAssignment = async (req, res) => {
 };
 
 /* =====================================================
-   2️⃣ UPLOAD ASSIGNMENT FILE (POST)
+   2️⃣ UPLOAD ASSIGNMENT FILES (POST)
 ===================================================== */
 exports.uploadAssignmentFiles = async (req, res) => {
   try {
     const { assignment_id } = req.params;
+    const teacher_id = req.teacher.teacher_id;
     
+    // 🔐 SECURITY CHECK: Ensure this teacher owns the assignment
+    const [ownerCheck] = await db.query(
+      "SELECT 1 FROM assignments WHERE assignment_id = ? AND teacher_id = ?",
+      [assignment_id, teacher_id]
+    );
+
+    if (ownerCheck.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You did not create this assignment."
+      });
+    }
+
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
@@ -101,14 +136,30 @@ exports.getAssignments = async (req, res) => {
 
     let query = `
       SELECT 
-        a.*,
-        af.file_id,
-        af.file_path,
-        af.file_type,
-        af.uploaded_on
+        a.assignment_id,
+        a.class_id,
+        a.section_id,
+        a.subject_id,
+        a.teacher_id,
+        a.title,
+        a.description,
+        a.max_marks,
+        a.passing_marks,
+        DATE_FORMAT(a.due_date, '%Y-%m-%d') as due_date,
+        a.status,
+        CONVERT_TZ(a.created_at, '+00:00', '+05:30') as created_at_ist,
+        c.class_name,
+        s.section_name,
+        sub.subject_name,
+        t.name as teacher_name,
+        GROUP_CONCAT(af.file_path) as file_paths,
+        GROUP_CONCAT(af.file_type) as file_types
       FROM assignments a
-      LEFT JOIN assignment_files af 
-        ON a.assignment_id = af.assignment_id
+      JOIN classes c ON a.class_id = c.class_id
+      JOIN sections s ON a.section_id = s.section_id
+      JOIN subjects sub ON a.subject_id = sub.subject_id
+      JOIN teachers t ON a.teacher_id = t.teacher_id
+      LEFT JOIN assignment_files af ON a.assignment_id = af.assignment_id
       WHERE 1 = 1
     `;
 
@@ -131,7 +182,7 @@ exports.getAssignments = async (req, res) => {
       params.push(teacher_id);
     }
 
-    query += " ORDER BY a.created_at DESC";
+    query += " GROUP BY a.assignment_id ORDER BY a.created_at DESC";
 
     const [rows] = await db.query(query, params);
 

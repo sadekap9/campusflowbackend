@@ -18,6 +18,7 @@ const {
   deleteAssignmentFile,
   deleteAssignment
 } = require("../controller/teacher/AssignmentController");
+const { GetTeacherExams } = require("../controller/teacher/ExamController");
 const authTeacher = require("../middleware/authTeacher");
 const assignmentUpload = require("../middleware/assignmentUpload");
 
@@ -70,5 +71,11 @@ router.delete("/assignment/:assignment_id", authTeacher, deleteAssignment);
 // Assignment Files
 router.post("/assignment/file/:assignment_id", authTeacher, assignmentUpload.array('files', 5), uploadAssignmentFiles);
 router.delete("/assignment/file/:file_id", authTeacher, deleteAssignmentFile);
+
+/* =========================================================
+   EXAM ROUTES (PROTECTED)
+   ========================================================= */
+
+router.get("/exams", authTeacher, GetTeacherExams);
 
 module.exports = router;
