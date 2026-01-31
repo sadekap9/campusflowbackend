@@ -5,7 +5,8 @@ const db = require("../../config/db");
 ===================================================== */
 exports.MarkAttendance = async (req, res) => {
   try {
-    const { teacher_id, attendance_date, status, log_in, log_out } = req.body;
+    // 🟠 Teacher cannot add logout time during mark attendance (it should go null)
+    const { teacher_id, attendance_date, status, log_in } = req.body;
 
     if (!teacher_id || !attendance_date || !status) {
       return res.status(400).json({
@@ -17,17 +18,16 @@ exports.MarkAttendance = async (req, res) => {
     await db.query(
       `INSERT INTO teacher_attendance
        (teacher_id, attendance_date, status, log_in, log_out)
-       VALUES (?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, NULL)
        ON DUPLICATE KEY UPDATE
          status = VALUES(status),
-         log_in = COALESCE(VALUES(log_in), log_in),
-         log_out = COALESCE(VALUES(log_out), log_out)`,
-      [teacher_id, attendance_date, status, log_in || null, log_out || null]
+         log_in = COALESCE(VALUES(log_in), log_in)`,
+      [teacher_id, attendance_date, status, log_in || null]
     );
 
     res.status(201).json({
       success: true,
-      message: "Teacher attendance saved successfully"
+      message: "Teacher attendance saved successfully (Logout time set to null)"
     });
 
   } catch (error) {
@@ -41,7 +41,9 @@ exports.MarkAttendance = async (req, res) => {
 ===================================================== */
 exports.GetAttendance = async (req, res) => {
   try {
-    const { teacher_id, start_date, end_date } = req.query;
+    const { teacher_id } = req.params;
+    console.log(teacher_id)
+    const { start_date, end_date } = req.query;
 
     if (!teacher_id) {
       return res.status(400).json({
