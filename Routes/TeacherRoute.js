@@ -63,7 +63,7 @@ router.delete("/student-attendance/:teacher_id/:attendance_id", authTeacher, del
    ========================================================= */
 
 router.post("/assignment", authTeacher, assignmentUpload.array('files', 5), createAssignment);
-router.get("/assignment", authTeacher, getAssignments);
+router.get("/assignment/:teacher_id", authTeacher, getAssignments);
 router.patch("/assignment/:assignment_id", authTeacher, updateAssignment);
 router.delete("/assignment/:assignment_id", authTeacher, deleteAssignment);
 

@@ -108,11 +108,19 @@ exports.createAssignment = async (req, res) => {
 };
 
 /* =====================================================
-   3️⃣ GET ASSIGNMENTS (GET)
+   2️⃣ GET ASSIGNMENTS (GET)
+   - Teacher can only see their own uploaded assignments
 ===================================================== */
 exports.getAssignments = async (req, res) => {
   try {
-    const { class_id, section_id, subject_id, teacher_id } = req.query;
+    const { teacher_id } = req.params;
+
+    if (!teacher_id) {
+      return res.status(400).json({
+        success: false,
+        message: "teacher_id is required in the URL"
+      });
+    }
 
     let query = `
       SELECT 
@@ -132,39 +140,20 @@ exports.getAssignments = async (req, res) => {
         s.section_name,
         sub.subject_name,
         t.name as teacher_name,
-        GROUP_CONCAT(af.file_path) as file_paths,
-        GROUP_CONCAT(af.file_type) as file_types
+        GROUP_CONCAT(DISTINCT af.file_path) as file_paths,
+        GROUP_CONCAT(DISTINCT af.file_id) as file_ids
       FROM assignments a
       JOIN classes c ON a.class_id = c.class_id
       JOIN sections s ON a.section_id = s.section_id
       JOIN subjects sub ON a.subject_id = sub.subject_id
       JOIN teachers t ON a.teacher_id = t.teacher_id
       LEFT JOIN assignment_files af ON a.assignment_id = af.assignment_id
-      WHERE 1 = 1
+      WHERE a.teacher_id = ?
+      GROUP BY a.assignment_id 
+      ORDER BY a.created_at DESC
     `;
 
-    const params = [];
-
-    if (class_id) {
-      query += " AND a.class_id = ?";
-      params.push(class_id);
-    }
-    if (section_id) {
-      query += " AND a.section_id = ?";
-      params.push(section_id);
-    }
-    if (subject_id) {
-      query += " AND a.subject_id = ?";
-      params.push(subject_id);
-    }
-    if (teacher_id) {
-      query += " AND a.teacher_id = ?";
-      params.push(teacher_id);
-    }
-
-    query += " GROUP BY a.assignment_id ORDER BY a.created_at DESC";
-
-    const [rows] = await db.query(query, params);
+    const [rows] = await db.query(query, [teacher_id]);
 
     res.json({
       success: true,
@@ -180,35 +169,49 @@ exports.getAssignments = async (req, res) => {
 
 /* =====================================================
    4️⃣ UPDATE ASSIGNMENT (PATCH)
+   - Only 'status' and 'due_date' can be updated
+   - Ensures security (only creator can update)
 ===================================================== */
 exports.updateAssignment = async (req, res) => {
   try {
     const { assignment_id } = req.params;
     const {
-      title,
-      description,
-      max_marks,
-      passing_marks,
+      teacher_id: body_teacher_id,
       due_date,
       status
     } = req.body;
 
+    const teacher_id = body_teacher_id || req.teacher?.teacher_id;
+
+    if (!teacher_id) {
+      return res.status(401).json({ success: false, message: "Unauthorized: teacher_id missing" });
+    }
+
+    /* 🔐 OWNER CHECK: Only the teacher who created this assignment can update it */
+    const [ownerCheck] = await db.query(
+      "SELECT 1 FROM assignments WHERE assignment_id = ? AND teacher_id = ?",
+      [assignment_id, teacher_id]
+    );
+
+    if (ownerCheck.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You did not create this assignment."
+      });
+    }
+
+    /* 
+       ✅ UPDATE ASSIGNMENT
+       Only status and due_date are updateable as per requirements.
+    */
     const [result] = await db.query(
       `UPDATE assignments SET
-        title = COALESCE(?, title),
-        description = COALESCE(?, description),
-        max_marks = COALESCE(?, max_marks),
-        passing_marks = COALESCE(?, passing_marks),
         due_date = COALESCE(?, due_date),
         status = COALESCE(?, status)
        WHERE assignment_id = ?`,
       [
-        title,
-        description,
-        max_marks,
-        passing_marks,
-        due_date,
-        status,
+        due_date || null,
+        status || null,
         assignment_id
       ]
     );
@@ -222,7 +225,7 @@ exports.updateAssignment = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Assignment updated successfully"
+      message: "Assignment status/due_date updated successfully"
     });
 
   } catch (error) {
@@ -233,22 +236,37 @@ exports.updateAssignment = async (req, res) => {
 
 /* =====================================================
    5️⃣ DELETE ASSIGNMENT FILE (DELETE)
+   Ensuring security (only creator can delete)
 ===================================================== */
 exports.deleteAssignmentFile = async (req, res) => {
   try {
     const { file_id } = req.params;
+    const { teacher_id: body_teacher_id } = req.body;
+    const teacher_id = body_teacher_id || req.teacher?.teacher_id;
+
+    if (!teacher_id) {
+      return res.status(401).json({ success: false, message: "Unauthorized: teacher_id missing" });
+    }
+
+    /* 🔐 OWNER CHECK: Does this file belong to an assignment created by this teacher? */
+    const [fileOwner] = await db.query(
+      `SELECT 1 FROM assignment_files af 
+       JOIN assignments a ON af.assignment_id = a.assignment_id 
+       WHERE af.file_id = ? AND a.teacher_id = ?`,
+      [file_id, teacher_id]
+    );
+
+    if (fileOwner.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You cannot delete this file."
+      });
+    }
 
     const [result] = await db.query(
       `DELETE FROM assignment_files WHERE file_id = ?`,
       [file_id]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "File not found"
-      });
-    }
 
     res.json({
       success: true,
@@ -263,28 +281,42 @@ exports.deleteAssignmentFile = async (req, res) => {
 
 /* =====================================================
    6️⃣ DELETE ASSIGNMENT (DELETE)
+   Ensuring security (only creator can delete)
 ===================================================== */
 exports.deleteAssignment = async (req, res) => {
   try {
     const { assignment_id } = req.params;
+    const { teacher_id: body_teacher_id } = req.body;
+    const teacher_id = body_teacher_id || req.teacher?.teacher_id;
 
-    // delete files first (FK safe)
+    if (!teacher_id) {
+      return res.status(401).json({ success: false, message: "Unauthorized: teacher_id missing" });
+    }
+
+    /* 🔐 OWNER CHECK: Only the teacher who created this assignment can delete it */
+    const [ownerCheck] = await db.query(
+      "SELECT 1 FROM assignments WHERE assignment_id = ? AND teacher_id = ?",
+      [assignment_id, teacher_id]
+    );
+
+    if (ownerCheck.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized: You did not create this assignment."
+      });
+    }
+
+    // 1️⃣ Delete files first (FK safety)
     await db.query(
       `DELETE FROM assignment_files WHERE assignment_id = ?`,
       [assignment_id]
     );
 
+    // 2️⃣ Delete the assignment record
     const [result] = await db.query(
       `DELETE FROM assignments WHERE assignment_id = ?`,
       [assignment_id]
     );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Assignment not found"
-      });
-    }
 
     res.json({
       success: true,
