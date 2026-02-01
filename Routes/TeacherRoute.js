@@ -18,6 +18,7 @@ const {
   deleteAssignment
 } = require("../controller/teacher/AssignmentController");
 const { GetClassTeacherExams, GetSubjectTeacherExams } = require("../controller/teacher/ExamController");
+const { GetTeacherClassesAndSections } = require("../controller/teacher/TeacherClassController");
 const authTeacher = require("../middleware/authTeacher");
 const assignmentUpload = require("../middleware/assignmentUpload");
 
@@ -40,6 +41,9 @@ router.get("/students/:teacher_id", authTeacher, GetAllAssignedStudents);
 
 // NEW: Get students teacher teaches based on materials/subjects assignment
 router.get("/subject-students/:teacher_id", authTeacher, GetSubjectStudents);
+
+// NEW: Get all classes and sections assigned to this teacher
+router.get("/classes/:teacher_id", authTeacher, GetTeacherClassesAndSections);
 /* =========================================================
    ATTENDANCE ROUTES (PROTECTED)
    ========================================================= */
