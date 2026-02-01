@@ -1,89 +1,134 @@
 const db = require("../../config/db");
 
-/* =====================================================
-   1️⃣ GET TEACHER EXAMS
-   Assigned Class Teacher: Can see exams for their section.
-   Subject Teacher: Can see exams for classes/sections they teach.
-===================================================== */
-exports.GetTeacherExams = async (req, res) => {
+/* =========================================================
+   1️⃣ GET EXAMS FOR CLASS TEACHER
+   - Teacher sees ALL exams of the class they are class teacher of
+   - Uses sections.teacher_id
+========================================================= */
+exports.GetClassTeacherExams = async (req, res) => {
   try {
-    const teacher_id = req.teacher.teacher_id;
+    const { teacher_id } = req.params;
 
-    // 1. Fetch exams for sections where this teacher is the CLASS TEACHER
-    // 2. Fetch exams for sections where this teacher is a SUBJECT TEACHER
-    // Use a JOIN approach to find all relevant exams in one go
-    
-    let query = `
+    if (!teacher_id) {
+      return res.status(400).json({
+        success: false,
+        message: "teacher_id is required"
+      });
+    }
+
+    const [exams] = await db.query(
+      `
       SELECT DISTINCT
         e.exam_id,
         e.exam_type,
         e.academic_year,
-        e.class_id,
-        e.section_id,
-        DATE_FORMAT(e.start_date, '%Y-%m-%d') as start_date,
-        DATE_FORMAT(e.end_date, '%Y-%m-%d') as end_date,
-        e.status,
-        c.class_name,
-        sec.section_name
-      FROM exams e
-      JOIN classes c ON e.class_id = c.class_id
-      LEFT JOIN sections sec ON e.section_id = sec.section_id
-      WHERE 
-        -- Rule 1: Teacher is the assigned Class Teacher for this section
-        (e.section_id IS NOT NULL AND e.section_id IN (SELECT section_id FROM sections WHERE teacher_id = ?))
-        
-        -- Rule 2: Teacher is the assigned Class Teacher for the whole class (if section is null)
-        OR (e.section_id IS NULL AND e.class_id IN (SELECT class_id FROM sections WHERE teacher_id = ?))
+        DATE_FORMAT(e.start_date, '%Y-%m-%d') AS start_date,
+        DATE_FORMAT(e.end_date, '%Y-%m-%d') AS end_date,
+        e.status AS exam_status,
 
-        -- Rule 3: Teacher teaches a subject in this specific section
-        OR (e.section_id IS NOT NULL AND e.section_id IN (SELECT section_id FROM teacher_subject WHERE teacher_id = ? AND status = 'active'))
-
-        -- Rule 4: Teacher teaches a subject in this class (if exam is for whole class)
-        OR (e.section_id IS NULL AND e.class_id IN (SELECT class_id FROM teacher_subject WHERE teacher_id = ? AND status = 'active'))
-      
-      ORDER BY e.start_date DESC
-    `;
-
-    const [exams] = await db.query(query, [teacher_id, teacher_id, teacher_id, teacher_id]);
-
-    if (exams.length === 0) {
-      return res.status(200).json({
-        success: true,
-        message: "No relevant exams found for your assigned classes/subjects.",
-        exams: []
-      });
-    }
-
-    // Optional: Fetch subjects for each exam to show "like a timetable"
-    const examIds = exams.map(e => e.exam_id);
-    const [subjects] = await db.query(
-      `SELECT 
-        es.exam_id,
-        es.subject_id,
-        s.subject_name,
+        es.exam_subject_id,
+        DATE_FORMAT(es.exam_date, '%Y-%m-%d') AS exam_date,
+        es.start_time,
+        es.end_time,
         es.max_marks,
-        es.passing_marks
-       FROM exam_subjects es
-       JOIN subjects s ON es.subject_id = s.subject_id
-       WHERE es.exam_id IN (?)`,
-      [examIds]
+        es.passing_marks,
+        es.status AS subject_exam_status,
+
+        c.class_id,
+        c.class_name,
+        sec.section_id,
+        sec.section_name,
+        sub.subject_id,
+        sub.subject_name
+      FROM exams e
+      JOIN exam_subjects es ON es.exam_id = e.exam_id
+      JOIN classes c ON c.class_id = e.class_id
+      JOIN sections sec ON sec.class_id = e.class_id
+      JOIN subjects sub ON sub.subject_id = es.subject_id
+      WHERE sec.teacher_id = ?
+      ORDER BY exam_date DESC, es.start_time ASC
+      `,
+      [teacher_id]
     );
 
-    // Group subjects by exam_id
-    const examsWithSubjects = exams.map(exam => ({
-      ...exam,
-      subjects: subjects.filter(s => s.exam_id === exam.exam_id)
-    }));
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      count: examsWithSubjects.length,
-      exams: examsWithSubjects
+      role: "class_teacher",
+      total: exams.length,
+      exams
     });
 
   } catch (error) {
-    console.error("GetTeacherExams Error:", error);
-    res.status(500).json({
+    console.error("GetClassTeacherExams error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error: " + error.message
+    });
+  }
+};
+
+/* =========================================================
+   2️⃣ GET EXAMS FOR SUBJECT TEACHER
+   - Teacher sees ONLY exams of subjects they teach
+   - Uses teacher_subject mapping
+========================================================= */
+exports.GetSubjectTeacherExams = async (req, res) => {
+  try {
+    const { teacher_id } = req.params;
+
+    if (!teacher_id) {
+      return res.status(400).json({
+        success: false,
+        message: "teacher_id is required"
+      });
+    }
+
+    const [exams] = await db.query(
+      `
+      SELECT DISTINCT
+        e.exam_id,
+        e.exam_type,
+        e.academic_year,
+        DATE_FORMAT(e.start_date, '%Y-%m-%d') AS start_date,
+        DATE_FORMAT(e.end_date, '%Y-%m-%d') AS end_date,
+        e.status AS exam_status,
+
+        es.exam_subject_id,
+        DATE_FORMAT(es.exam_date, '%Y-%m-%d') AS exam_date,
+        es.start_time,
+        es.end_time,
+        es.max_marks,
+        es.passing_marks,
+        es.status AS subject_exam_status,
+
+        c.class_id,
+        c.class_name,
+        sub.subject_id,
+        sub.subject_name
+      FROM exams e
+      JOIN exam_subjects es ON es.exam_id = e.exam_id
+      JOIN teacher_subject ts
+        ON ts.class_id = e.class_id
+       AND ts.subject_id = es.subject_id
+       AND ts.status = 'active'
+      JOIN classes c ON c.class_id = e.class_id
+      JOIN subjects sub ON sub.subject_id = es.subject_id
+      WHERE ts.teacher_id = ?
+      ORDER BY exam_date DESC, es.start_time ASC
+      `,
+      [teacher_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      role: "subject_teacher",
+      total: exams.length,
+      exams
+    });
+
+  } catch (error) {
+    console.error("GetSubjectTeacherExams error:", error);
+    return res.status(500).json({
       success: false,
       message: "Server error: " + error.message
     });

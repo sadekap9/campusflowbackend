@@ -12,13 +12,12 @@ const {
 } = require("../controller/teacher/StudentAttendanceController");
 const {
   createAssignment,
-  uploadAssignmentFiles,
   getAssignments,
   updateAssignment,
   deleteAssignmentFile,
   deleteAssignment
 } = require("../controller/teacher/AssignmentController");
-const { GetTeacherExams } = require("../controller/teacher/ExamController");
+const { GetClassTeacherExams, GetSubjectTeacherExams } = require("../controller/teacher/ExamController");
 const authTeacher = require("../middleware/authTeacher");
 const assignmentUpload = require("../middleware/assignmentUpload");
 
@@ -63,19 +62,19 @@ router.delete("/student-attendance/:teacher_id/:attendance_id", authTeacher, del
    ASSIGNMENT ROUTES (PROTECTED)
    ========================================================= */
 
-router.post("/assignment", authTeacher, createAssignment);
+router.post("/assignment", authTeacher, assignmentUpload.array('files', 5), createAssignment);
 router.get("/assignment", authTeacher, getAssignments);
 router.patch("/assignment/:assignment_id", authTeacher, updateAssignment);
 router.delete("/assignment/:assignment_id", authTeacher, deleteAssignment);
 
 // Assignment Files
-router.post("/assignment/file/:assignment_id", authTeacher, assignmentUpload.array('files', 5), uploadAssignmentFiles);
 router.delete("/assignment/file/:file_id", authTeacher, deleteAssignmentFile);
 
 /* =========================================================
    EXAM ROUTES (PROTECTED)
    ========================================================= */
 
-router.get("/exams", authTeacher, GetTeacherExams);
+router.get("/exams/class/:teacher_id", authTeacher, GetClassTeacherExams);
+router.get("/exams/subject/:teacher_id", authTeacher, GetSubjectTeacherExams);
 
 module.exports = router;

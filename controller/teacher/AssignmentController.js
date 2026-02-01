@@ -1,15 +1,18 @@
 const db = require("../../config/db");
 
 /* =====================================================
-   1️⃣ CREATE ASSIGNMENT (ONLY SUBJECT TEACHER CAN POST)
+   1️⃣ CREATE ASSIGNMENT & UPLOAD FILES (SINGLE API)
+   Strictly following provided table schemas
 ===================================================== */
 exports.createAssignment = async (req, res) => {
+  const connection = await db.getConnection();
   try {
-    const teacher_id = req.teacher.teacher_id; // 🔐 from JWT
+    await connection.beginTransaction();
+
     const {
+      teacher_id: body_teacher_id,
       class_id,
       section_id,
-      subject_id,
       title,
       description,
       max_marks,
@@ -17,35 +20,41 @@ exports.createAssignment = async (req, res) => {
       due_date
     } = req.body;
 
-    if (!class_id || !section_id || !subject_id || !title || !due_date) {
+    const teacher_id = body_teacher_id || req.teacher?.teacher_id;
+
+    // 🛑 VALIDATION (Based on NN - Not Null checkboxes in Image 1)
+    if (!teacher_id || !class_id || !section_id || !title || !max_marks || !due_date) {
+      await connection.rollback();
       return res.status(400).json({
         success: false,
-        message: "Required fields missing"
+        message: "Required fields missing: teacher_id, class_id, section_id, title, max_marks, and due_date are mandatory."
       });
     }
 
-    /* 🔐 AUTHORIZATION CHECK
-       Is this teacher assigned to this subject + class?
+    /* 🔐 AUTHORIZATION & SUBJECT RETRIEVAL
+       Get subject_id (Required NN field) from teacher_subject mapping
     */
-    const [assigned] = await db.query(
-      `SELECT teacher_subject_id 
+    const [assigned] = await connection.query(
+      `SELECT subject_id 
        FROM teacher_subject
        WHERE teacher_id = ?
          AND class_id = ?
-         AND subject_id = ?
          AND status = 'active'`,
-      [teacher_id, class_id, subject_id]
+      [teacher_id, class_id]
     );
 
     if (assigned.length === 0) {
+      await connection.rollback();
       return res.status(403).json({
         success: false,
-        message: "You are not authorized to post assignment for this subject"
+        message: "You are not authorized to post assignments for this class/teacher combination."
       });
     }
 
-    /* ✅ CREATE ASSIGNMENT */
-    const [result] = await db.query(
+    const subject_id = assigned[0].subject_id;
+
+    /* ✅ 1. INSERT INTO assignments (Schema 1) */
+    const [result] = await connection.query(
       `INSERT INTO assignments
        (class_id, section_id, subject_id, teacher_id, title, description, max_marks, passing_marks, due_date)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -55,75 +64,46 @@ exports.createAssignment = async (req, res) => {
         subject_id,
         teacher_id,
         title,
-        description || null,
-        max_marks || null,
-        passing_marks || null,
-        due_date
+        description || null,   // NULL allowed
+        max_marks,             // NN
+        passing_marks || null, // NULL allowed
+        due_date               // NN
       ]
     );
 
-    res.status(201).json({
-      success: true,
-      message: "Assignment created successfully",
-      assignment_id: result.insertId
-    });
+    const assignment_id = result.insertId;
 
-  } catch (error) {
-    console.error("Create Assignment Error:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-};
+    /* ✅ 2. INSERT INTO assignment_files (Schema 2) */
+    if (req.files && req.files.length > 0) {
+      const fileRecords = req.files.map(file => [
+        assignment_id, // assignment_id (NN)
+        file.path,     // file_path (NN)
+        file.mimetype  // file_type (Nullable)
+      ]);
 
-/* =====================================================
-   2️⃣ UPLOAD ASSIGNMENT FILES (POST)
-===================================================== */
-exports.uploadAssignmentFiles = async (req, res) => {
-  try {
-    const { assignment_id } = req.params;
-    const teacher_id = req.teacher.teacher_id;
-    
-    // 🔐 SECURITY CHECK: Ensure this teacher owns the assignment
-    const [ownerCheck] = await db.query(
-      "SELECT 1 FROM assignments WHERE assignment_id = ? AND teacher_id = ?",
-      [assignment_id, teacher_id]
-    );
-
-    if (ownerCheck.length === 0) {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized: You did not create this assignment."
-      });
+      await connection.query(
+        `INSERT INTO assignment_files
+         (assignment_id, file_path, file_type)
+         VALUES ?`,
+        [fileRecords]
+      );
     }
 
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded"
-      });
-    }
-
-    const fileRecords = req.files.map(file => [
-      assignment_id,
-      file.path,
-      file.mimetype
-    ]);
-
-    await db.query(
-      `INSERT INTO assignment_files
-       (assignment_id, file_path, file_type)
-       VALUES ?`,
-      [fileRecords]
-    );
+    await connection.commit();
 
     res.status(201).json({
       success: true,
-      message: `${req.files.length} file(s) uploaded successfully`,
-      files: req.files.map(f => f.path)
+      message: "Assignment created successfully with files",
+      assignment_id: assignment_id,
+      files: req.files ? req.files.map(f => f.path) : []
     });
 
   } catch (error) {
-    console.error("Upload Assignment Files Error:", error);
+    if (connection) await connection.rollback();
+    console.error("Combined Create Assignment Error:", error);
     res.status(500).json({ success: false, message: "Server error" });
+  } finally {
+    if (connection) connection.release();
   }
 };
 
