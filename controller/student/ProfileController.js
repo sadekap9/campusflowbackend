@@ -29,10 +29,14 @@ exports.GetStudentProfile = async (req, res) => {
         sp.profile_image,
         sp.status,
         c.class_name,
-        s.section_name
+        s.section_name,
+        ct.name AS class_teacher_name,
+        ct.email AS class_teacher_email,
+        ct.phone AS class_teacher_phone
       FROM student_profile sp
       LEFT JOIN classes c ON sp.class_id = c.class_id
       LEFT JOIN sections s ON sp.section_id = s.section_id
+      LEFT JOIN teachers ct ON s.teacher_id = ct.teacher_id
       WHERE sp.student_id = ?`,
       [student_id]
     );
