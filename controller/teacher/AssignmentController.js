@@ -328,3 +328,68 @@ exports.deleteAssignment = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+/* =====================================================
+   7️⃣ GET ALL SUBMISSIONS FOR AN ASSIGNMENT (FOR TEACHER)
+   - Returns all students in the target class/section
+   - Shows who has submitted and who hasn't
+===================================================== */
+exports.GetSubmissions = async (req, res) => {
+  try {
+    const { assignment_id } = req.params;
+    const teacher_id = req.teacher ? req.teacher.teacher_id : req.query.teacher_id;
+
+    if (!assignment_id) {
+      return res.status(400).json({ success: false, message: "assignment_id is required" });
+    }
+
+    // 1. Verify this teacher created the assignment
+    const [[assignment]] = await db.query(
+      "SELECT class_id, section_id, teacher_id FROM assignments WHERE assignment_id = ?",
+      [assignment_id]
+    );
+
+    if (!assignment) {
+      return res.status(404).json({ success: false, message: "Assignment not found" });
+    }
+
+    if (teacher_id != assignment.teacher_id) {
+      return res.status(403).json({ success: false, message: "Unauthorized: You did not create this assignment" });
+    }
+
+    // 2. Get all students in that class/section and their submission status
+    const [submissions] = await db.query(
+      `SELECT 
+        sp.student_id,
+        sp.full_name,
+        sp.enrollment_no,
+        sub.submission_id,
+        sub.file_path,
+        sub.file_type,
+        sub.submitted_on,
+        sub.is_late,
+        sub.status as submission_status,
+        am.marks_obtained,
+        am.is_locked
+      FROM student_profile sp
+      LEFT JOIN assignment_submission sub 
+        ON sp.student_id = sub.student_id AND sub.assignment_id = ?
+      LEFT JOIN assignment_marks am
+        ON sp.student_id = am.student_id AND am.assignment_id = ?
+      WHERE sp.class_id = ? AND sp.section_id = ?
+      ORDER BY sp.full_name ASC`,
+      [assignment_id, assignment_id, assignment.class_id, assignment.section_id]
+    );
+
+    res.status(200).json({
+      success: true,
+      count: submissions.length,
+      data: submissions
+    });
+
+  } catch (error) {
+    console.error("GetSubmissions Error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+

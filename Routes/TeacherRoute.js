@@ -15,9 +15,17 @@ const {
   getAssignments,
   updateAssignment,
   deleteAssignmentFile,
-  deleteAssignment
+  deleteAssignment,
+  GetSubmissions
 } = require("../controller/teacher/AssignmentController");
+const {
+  AddOrUpdateAssignmentMarks,
+  GetAssignmentMarks,
+  LockAssignmentMarks,
+  GiveDefaultZeroToAbsentees
+} = require("../controller/teacher/AssignmentMarksController");
 const { GetClassTeacherExams, GetSubjectTeacherExams } = require("../controller/teacher/ExamController");
+const { GradeExamMarks, GetExamMarks } = require("../controller/teacher/ExamMarksController");
 const { GetTeacherClassesAndSections } = require("../controller/teacher/TeacherClassController");
 const authTeacher = require("../middleware/authTeacher");
 const assignmentUpload = require("../middleware/assignmentUpload");
@@ -27,27 +35,23 @@ const assignmentUpload = require("../middleware/assignmentUpload");
    ========================================================= */
 router.post("/login", TeacherLogin);
 router.post("/forgot-password", ForgotPassword);
+
 /* =========================================================
    TIMETABLE ROUTES (PROTECTED)
    ========================================================= */
-
-// Get personal schedule (lectures)
 router.get("/timetable/:teacher_id", authTeacher, GetTeacherTimetable);
-
-// Get full timetable for classes they are in charge of
 router.get("/class-timetable/:teacher_id", authTeacher, GetAssignedClassTimetable);
 
+/* =========================================================
+   STUDENT/CLASS INFO ROUTES (PROTECTED)
+   ========================================================= */
 router.get("/students/:teacher_id", authTeacher, GetAllAssignedStudents);
-
-// NEW: Get students teacher teaches based on materials/subjects assignment
 router.get("/subject-students/:teacher_id", authTeacher, GetSubjectStudents);
-
-// NEW: Get all classes and sections assigned to this teacher
 router.get("/classes/:teacher_id", authTeacher, GetTeacherClassesAndSections);
+
 /* =========================================================
    ATTENDANCE ROUTES (PROTECTED)
    ========================================================= */
-
 router.post("/attendance", authTeacher, MarkAttendance);
 router.get("/attendance/:teacher_id", authTeacher, GetAttendance);
 router.patch("/attendance/:attendance_id", authTeacher, UpdateAttendance);
@@ -56,7 +60,6 @@ router.delete("/attendance/:attendance_id", authTeacher, DeleteAttendance);
 /* =========================================================
    STUDENT ATTENDANCE ROUTES (PROTECTED)
    ========================================================= */
-
 router.post("/student-attendance/:teacher_id", authTeacher, markStudentAttendance);
 router.get("/student-attendance/:teacher_id", authTeacher, getStudentAttendance);
 router.patch("/student-attendance/:teacher_id/:attendance_id", authTeacher, updateStudentAttendance);
@@ -65,19 +68,30 @@ router.delete("/student-attendance/:teacher_id/:attendance_id", authTeacher, del
 /* =========================================================
    ASSIGNMENT ROUTES (PROTECTED)
    ========================================================= */
-
 router.post("/assignment", authTeacher, assignmentUpload.array('files', 5), createAssignment);
 router.get("/assignment/:teacher_id", authTeacher, getAssignments);
 router.patch("/assignment/:assignment_id", authTeacher, updateAssignment);
 router.delete("/assignment/:assignment_id", authTeacher, deleteAssignment);
-
-// Assignment Files
 router.delete("/assignment/file/:file_id", authTeacher, deleteAssignmentFile);
+router.get("/assignment/submissions/:assignment_id", authTeacher, GetSubmissions);
 
 /* =========================================================
-   EXAM ROUTES (PROTECTED)
+   ASSIGNMENT MARKS ROUTES (PROTECTED)
    ========================================================= */
+router.post("/assignment/marks", authTeacher, AddOrUpdateAssignmentMarks);
+router.get("/assignment/marks/:assignment_id", authTeacher, GetAssignmentMarks);
+router.patch("/assignment/marks/lock/:assignment_id", authTeacher, LockAssignmentMarks);
+router.post("/assignment/marks/auto-zero", authTeacher, GiveDefaultZeroToAbsentees);
 
+/* =========================================================
+   EXAM MARKS ROUTES (NEW)
+   ========================================================= */
+router.post("/exam/marks", authTeacher, GradeExamMarks);
+router.get("/exam/marks", authTeacher, GetExamMarks);
+
+/* =========================================================
+   EXAM SCHEDULE ROUTES (PROTECTED)
+   ========================================================= */
 router.get("/exams/class/:teacher_id", authTeacher, GetClassTeacherExams);
 router.get("/exams/subject/:teacher_id", authTeacher, GetSubjectTeacherExams);
 

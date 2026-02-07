@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const AdminRoute = require("./Routes/AdminRoute");
 const TeacherRoute = require("./Routes/TeacherRoute");
+const StudentRoute = require("./Routes/StudentRoute");
 const db = require("./config/db");
 
 const app = express();
@@ -19,6 +20,8 @@ app.use("/uploads", express.static("uploads"));
 // Routes
 app.use("/api/admin", AdminRoute);
 app.use("/api/teacher", TeacherRoute);
+app.use("/api/student", StudentRoute);
+
 
 
 // DB Test
