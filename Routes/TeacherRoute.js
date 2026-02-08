@@ -21,11 +21,10 @@ const {
 const {
   AddOrUpdateAssignmentMarks,
   GetAssignmentMarks,
-  LockAssignmentMarks,
   GiveDefaultZeroToAbsentees
 } = require("../controller/teacher/AssignmentMarksController");
 const { GetClassTeacherExams, GetSubjectTeacherExams } = require("../controller/teacher/ExamController");
-const { GradeExamMarks, GetExamMarks } = require("../controller/teacher/ExamMarksController");
+const { GradeExamMarks, GetSubjectTeacherMarks, GetClassTeacherMarks } = require("../controller/teacher/ExamMarksController");
 const { GetTeacherClassesAndSections } = require("../controller/teacher/TeacherClassController");
 const authTeacher = require("../middleware/authTeacher");
 const assignmentUpload = require("../middleware/assignmentUpload");
@@ -80,14 +79,15 @@ router.get("/assignment/submissions/:assignment_id", authTeacher, GetSubmissions
    ========================================================= */
 router.post("/assignment/marks", authTeacher, AddOrUpdateAssignmentMarks);
 router.get("/assignment/marks/:assignment_id", authTeacher, GetAssignmentMarks);
-router.patch("/assignment/marks/lock/:assignment_id", authTeacher, LockAssignmentMarks);
+
 router.post("/assignment/marks/auto-zero", authTeacher, GiveDefaultZeroToAbsentees);
 
 /* =========================================================
-   EXAM MARKS ROUTES (NEW)
+   EXAM MARKS ROUTES (PROTECTED)
    ========================================================= */
 router.post("/exam/marks", authTeacher, GradeExamMarks);
-router.get("/exam/marks", authTeacher, GetExamMarks);
+router.get("/exam/marks/subject", authTeacher, GetSubjectTeacherMarks);
+router.get("/exam/marks/class", authTeacher, GetClassTeacherMarks);
 
 /* =========================================================
    EXAM SCHEDULE ROUTES (PROTECTED)

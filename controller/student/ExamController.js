@@ -79,3 +79,69 @@ exports.GetMyExams = async (req, res) => {
     });
   }
 };
+
+/* =========================================================
+   GET STUDENT'S MARKS / GRADES FOR A SPECIFIC EXAM
+   - Mandatory: exam_id
+   - Optional: exam_subject_id (for subject-wise view)
+   ========================================================= */
+exports.GetMyExamMarks = async (req, res) => {
+  try {
+    const { student_id } = req.params;
+    const { exam_id, exam_subject_id } = req.query;
+
+    if (!exam_id) {
+      return res.status(400).json({
+        success: false,
+        message: "exam_id is required."
+      });
+    }
+
+    let query = `
+      SELECT 
+        m.mark_id,
+        e.exam_type,
+        e.academic_year,
+        sub.subject_name,
+        sub.subject_code,
+        es.max_marks,
+        es.passing_marks,
+        m.marks_obtained,
+        m.percentage,
+        m.grade,
+        m.status,
+        m.remarks,
+        t.name as evaluated_by_name
+      FROM marks m
+      JOIN exams e ON e.exam_id = m.exam_id
+      JOIN exam_subjects es ON es.exam_subject_id = m.exam_subject_id
+      JOIN subjects sub ON sub.subject_id = es.subject_id
+      LEFT JOIN teachers t ON t.teacher_id = m.evaluated_by
+      WHERE m.student_id = ? AND m.exam_id = ?
+    `;
+
+    const params = [student_id, exam_id];
+
+    if (exam_subject_id) {
+      query += " AND m.exam_subject_id = ?";
+      params.push(exam_subject_id);
+    }
+
+    query += " ORDER BY sub.subject_name ASC";
+
+    const [marks] = await db.query(query, params);
+
+    res.status(200).json({
+      success: true,
+      count: marks.length,
+      data: marks
+    });
+
+  } catch (error) {
+    console.error("GetMyExamMarks Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
