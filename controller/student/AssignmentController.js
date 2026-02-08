@@ -54,7 +54,7 @@ exports.GetMyAssignments = async (req, res) => {
       LEFT JOIN assignment_submission s 
         ON a.assignment_id = s.assignment_id AND s.student_id = ?
       LEFT JOIN assignment_marks m 
-        ON a.assignment_id = m.assignment_id AND m.student_id = ? AND m.is_locked = 1
+        ON a.assignment_id = m.assignment_id AND m.student_id = ?
       WHERE a.class_id = ? AND a.section_id = ? AND a.status = 'active'
       ORDER BY a.due_date DESC`,
       [student_id, student_id, class_id, section_id]
@@ -172,7 +172,7 @@ exports.GetMyGrades = async (req, res) => {
       FROM assignment_marks m
       JOIN assignments a ON m.assignment_id = a.assignment_id
       JOIN subjects sub ON a.subject_id = sub.subject_id
-      WHERE m.student_id = ? AND m.is_locked = 1
+      WHERE m.student_id = ?
       ORDER BY m.created_at DESC`,
       [student_id]
     );

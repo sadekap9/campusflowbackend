@@ -194,75 +194,45 @@ exports.GradeExamMarks = async (req, res) => {
 /* =========================================================
    2️⃣ VIEW EXAM MARKS
 ========================================================= */
-exports.GetExamMarks = async (req, res) => {
+/* =========================================================
+   2️⃣ VIEW EXAM MARKS (SUBJECT TO SUBJECT TEACHER)
+   - Only returns marks for subjects the teacher actually teaches.
+========================================================= */
+exports.GetSubjectTeacherMarks = async (req, res) => {
   try {
     const teacher_id = req.teacher.teacher_id;
-    const { exam_id, exam_subject_id, section_id } = req.query;
+    const { exam_subject_id, section_id } = req.query;
 
-    if (!exam_id || !exam_subject_id || !section_id) {
+    if (!exam_subject_id || !section_id) {
       return res.status(400).json({
         success: false,
-        message: "exam_id, exam_subject_id, section_id are required"
+        message: "exam_subject_id and section_id are required"
       });
     }
 
-    /* =====================================================
-       1️⃣ GET EXAM & SUBJECT
-    ===================================================== */
-    const [[exam]] = await db.query(
-      "SELECT class_id FROM exams WHERE exam_id = ?",
-      [exam_id]
-    );
-
-    const [[es]] = await db.query(
-      "SELECT subject_id FROM exam_subjects WHERE exam_subject_id = ?",
-      [exam_subject_id]
-    );
-
-    if (!exam || !es) {
-      return res.status(404).json({
-        success: false,
-        message: "Exam or subject not found"
-      });
-    }
-
-    const { class_id } = exam;
-    const { subject_id } = es;
-
-    /* =====================================================
-       2️⃣ AUTHORIZATION
-    ===================================================== */
-    const [[isSubjectTeacher]] = await db.query(
+    /* 1️⃣ AUTHORIZATION Check: Is this the Subject Teacher? */
+    const [[auth]] = await db.query(
       `
       SELECT 1
-      FROM teacher_subject
-      WHERE teacher_id = ?
-        AND class_id = ?
-        AND subject_id = ?
-        AND status = 'active'
+      FROM teacher_subject ts
+      JOIN exam_subjects es ON es.subject_id = ts.subject_id
+      JOIN exams e ON e.exam_id = es.exam_id
+      WHERE ts.teacher_id = ?
+        AND es.exam_subject_id = ?
+        AND ts.class_id = e.class_id
+        AND ts.status = 'active'
       `,
-      [teacher_id, class_id, subject_id]
+      [teacher_id, exam_subject_id]
     );
 
-    const [[isClassTeacher]] = await db.query(
-      `
-      SELECT 1
-      FROM sections
-      WHERE section_id = ? AND teacher_id = ?
-      `,
-      [section_id, teacher_id]
-    );
-
-    if (!isSubjectTeacher && !isClassTeacher) {
+    if (!auth) {
       return res.status(403).json({
         success: false,
-        message: "Access denied"
+        message: "Access denied: You are not the subject teacher for this exam subject."
       });
     }
 
-    /* =====================================================
-       3️⃣ FETCH MARKS
-    ===================================================== */
+    /* 2️⃣ FETCH MARKS */
     const [rows] = await db.query(
       `
       SELECT
@@ -275,16 +245,16 @@ exports.GetExamMarks = async (req, res) => {
         m.grade,
         m.status,
         m.remarks,
+        m.evaluated_by,
         t.name AS evaluated_by_name
       FROM marks m
       JOIN student_profile sp ON sp.student_id = m.student_id
       LEFT JOIN teachers t ON t.teacher_id = m.evaluated_by
-      WHERE m.exam_id = ?
-        AND m.exam_subject_id = ?
+      WHERE m.exam_subject_id = ?
         AND m.section_id = ?
       ORDER BY sp.full_name
       `,
-      [exam_id, exam_subject_id, section_id]
+      [exam_subject_id, section_id]
     );
 
     return res.status(200).json({
@@ -294,10 +264,83 @@ exports.GetExamMarks = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GetExamMarks Error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
+    console.error("GetSubjectTeacherMarks Error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
+/* =========================================================
+   3️⃣ VIEW EXAM MARKS (SUBJECT TO CLASS TEACHER)
+   - Allows Class Teacher to see marks of any subject in their class.
+========================================================= */
+exports.GetClassTeacherMarks = async (req, res) => {
+  try {
+    const teacher_id = req.teacher.teacher_id;
+    const { exam_id, section_id, exam_subject_id } = req.query;
+
+    if (!exam_id || !section_id) {
+      return res.status(400).json({
+        success: false,
+        message: "exam_id and section_id are required"
+      });
+    }
+
+    /* 1️⃣ AUTHORIZATION Check: Is this the Class Teacher? */
+    const [[isClassTeacher]] = await db.query(
+      `SELECT 1 FROM sections WHERE section_id = ? AND teacher_id = ?`,
+      [section_id, teacher_id]
+    );
+
+    if (!isClassTeacher) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: You are not the class teacher of this section."
+      });
+    }
+
+    /* 2️⃣ FETCH MARKS (Filtered by subject if provided, otherwise shows all results for the exam) */
+    let query = `
+      SELECT
+        m.mark_id,
+        sp.student_id,
+        sp.full_name,
+        sp.enrollment_no,
+        sub.subject_name,
+        m.marks_obtained,
+        es.max_marks,
+        m.percentage,
+        m.grade,
+        m.status,
+        m.evaluated_by,
+        t.name AS evaluated_by_name
+      FROM marks m
+      JOIN student_profile sp ON sp.student_id = m.student_id
+      JOIN exam_subjects es ON es.exam_subject_id = m.exam_subject_id
+      JOIN subjects sub ON sub.subject_id = es.subject_id
+      LEFT JOIN teachers t ON t.teacher_id = m.evaluated_by
+      WHERE m.exam_id = ? AND m.section_id = ?
+    `;
+
+    const params = [exam_id, section_id];
+
+    if (exam_subject_id) {
+      query += ` AND m.exam_subject_id = ?`;
+      params.push(exam_subject_id);
+    }
+
+    query += ` ORDER BY sp.full_name, sub.subject_name`;
+
+    const [rows] = await db.query(query, params);
+
+    return res.status(200).json({
+      success: true,
+      total: rows.length,
+      data: rows
+    });
+
+  } catch (error) {
+    console.error("GetClassTeacherMarks Error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+

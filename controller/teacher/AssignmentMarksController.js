@@ -66,22 +66,7 @@ exports.AddOrUpdateAssignmentMarks = async (req, res) => {
       });
     }
 
-    /* Check if marks are already locked */
-    const [[existing]] = await db.query(
-      `
-      SELECT is_locked
-      FROM assignment_marks
-      WHERE assignment_id = ? AND student_id = ?
-      `,
-      [assignment_id, student_id]
-    );
 
-    if (existing && existing.is_locked) {
-      return res.status(403).json({
-        success: false,
-        message: "Marks are locked and cannot be updated."
-      });
-    }
 
     /* Insert or update marks */
     await db.query(
@@ -157,7 +142,6 @@ exports.GetAssignmentMarks = async (req, res) => {
         a.max_marks,
         ROUND((am.marks_obtained / a.max_marks) * 100, 2) AS percentage,
         am.remarks,
-        am.is_locked,
         am.created_at
       FROM assignment_marks am
       JOIN student_profile sp ON sp.student_id = am.student_id
@@ -182,64 +166,6 @@ exports.GetAssignmentMarks = async (req, res) => {
   }
 };
 
-/* =========================================================
-   3️⃣ LOCK ASSIGNMENT MARKS
-========================================================= */
-exports.LockAssignmentMarks = async (req, res) => {
-  try {
-    const { assignment_id } = req.params;
-    const teacher_id = req.teacher.teacher_id;
-
-    if (!assignment_id) {
-        return res.status(400).json({ success: false, message: "assignment_id is required" });
-    }
-
-    /* Authorization Check: Only the creator can lock marks */
-    const [[assignment]] = await db.query(
-      `SELECT teacher_id FROM assignments WHERE assignment_id = ?`,
-      [assignment_id]
-    );
-
-    if (!assignment) {
-      return res.status(404).json({ success: false, message: "Assignment not found" });
-    }
-
-    if (teacher_id != assignment.teacher_id) {
-      return res.status(403).json({
-          success: false,
-          message: "Authorization denied: Only the subject teacher who created this assignment can lock marks."
-      });
-    }
-
-    const [result] = await db.query(
-      `
-      UPDATE assignment_marks
-      SET is_locked = 1
-      WHERE assignment_id = ?
-      `,
-      [assignment_id]
-    );
-
-    if (result.affectedRows === 0) {
-        return res.status(404).json({
-            success: false,
-            message: "No marks found to lock for this assignment."
-        });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Marks for this assignment have been locked successfully."
-    });
-
-  } catch (err) {
-    console.error("Lock Assignment Marks Error:", err);
-    res.status(500).json({
-      success: false,
-      message: "Server error: " + err.message
-    });
-  }
-};
 
 /* =========================================================
    4️⃣ GIVE ZERO TO ALL WHO HAVEN'T SUBMITTED
