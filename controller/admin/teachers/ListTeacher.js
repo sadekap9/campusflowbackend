@@ -21,6 +21,7 @@ exports.ListTeacher = async (req, res) => {
         t.joining_date,
         t.status,
         t.profile_image,
+        ts.teacher_subject_id,
         ts.class_id,
         ts.subject_id,
         c.class_name,
@@ -46,6 +47,7 @@ exports.ListTeacher = async (req, res) => {
       // If there's an assignment in this row, add it to the array
       if (row.class_name && row.subject_name) {
         teacherMap.get(teacherId).assignments.push({
+          teacher_subject_id: row.teacher_subject_id,
           class_name: row.class_name,
           subject_name: row.subject_name,
           class_id: row.class_id,

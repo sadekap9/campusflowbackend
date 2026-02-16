@@ -61,7 +61,8 @@ const { AssignProxyTeacher } =
   AssignSubjectToTeacher,
   GetAssignedSubjects,
   GetAssignedTeachersByClass,
-  UpdateAssignedSubject
+  UpdateAssignedSubject,
+  DeleteAssignedSubject
 } = require("../controller/admin/TeacherSubjectController");
 
 const {
@@ -199,6 +200,11 @@ router.get(
 router.put(
   "/assign-subject-teacher/:teacher_subject_id",
   UpdateAssignedSubject
+);
+
+router.delete(
+  "/assign-subject-teacher/:teacher_subject_id",
+  DeleteAssignedSubject
 );
 
 router.post("/exam", CreateExam);

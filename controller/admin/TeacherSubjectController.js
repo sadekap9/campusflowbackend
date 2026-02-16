@@ -205,3 +205,47 @@ exports.UpdateAssignedSubject = async (req, res) => {
     });
   }
 };
+
+/* =========================
+   DELETE ASSIGNED SUBJECT
+========================= */
+exports.DeleteAssignedSubject = async (req, res) => {
+  try {
+    const { teacher_subject_id } = req.params;
+
+    if (!teacher_subject_id) {
+      return res.status(400).json({
+        success: false,
+        message: "teacher_subject_id is required"
+      });
+    }
+
+    const [existing] = await db.query(
+      "SELECT * FROM teacher_subject WHERE teacher_subject_id = ?",
+      [teacher_subject_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Assignment not found"
+      });
+    }
+
+    await db.query(
+      "DELETE FROM teacher_subject WHERE teacher_subject_id = ?",
+      [teacher_subject_id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assignment removed successfully"
+    });
+  } catch (error) {
+    console.error("DeleteAssignedSubject error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
