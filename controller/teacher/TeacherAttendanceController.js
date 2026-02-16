@@ -42,7 +42,6 @@ exports.MarkAttendance = async (req, res) => {
 exports.GetAttendance = async (req, res) => {
   try {
     const { teacher_id } = req.params;
-    console.log(teacher_id)
     const { start_date, end_date } = req.query;
 
     if (!teacher_id) {

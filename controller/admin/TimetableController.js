@@ -1,4 +1,3 @@
-console.log("TimetableController.js loaded");
 const db = require("../../config/db");
 
 const VALID_DAYS = [
@@ -14,13 +13,9 @@ const VALID_DAYS = [
    ADD TIMETABLE ENTRY
 ========================= */
 exports.AddTimetable = async (req, res) => {
-  console.log(">>> AddTimetable API hit <<<");
-  console.log("Request Body:", JSON.stringify(req.body, null, 2));
-
   let conn;
   try {
     conn = await db.getConnection();
-    console.log("Database connection acquired");
     const {
       class_id,
       section_id,

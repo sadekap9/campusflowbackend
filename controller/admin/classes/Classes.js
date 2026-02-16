@@ -2,7 +2,6 @@ const db = require("../../../config/db");
 
 exports.AddClasses = async (req, res) => {
     try {
-        console.log("Api hit")
         const { class_name } = req.body;
         if (!class_name) {
             return res.status(400).json({ message: "class_name required" });

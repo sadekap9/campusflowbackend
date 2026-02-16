@@ -25,10 +25,10 @@ async function checkStudents() {
         if (rows.length > 0) {
             const student = rows[0];
             const isMatch = await bcrypt.compare(loginPassword, student.password);
-            console.log(`Student Found: ID ${student.student_id}, Email: ${student.email}`);
-            console.log(`Status in DB: ${student.status}`);
-            console.log(`Password Hash in DB: ${student.password}`);
-            console.log(`Does 'Byxpek7R' match? ${isMatch}`);
+            // console.log(`Student Found: ID ${student.student_id}, Email: ${student.email}`);
+            // console.log(`Status in DB: ${student.status}`);
+            // console.log(`Password Hash in DB: ${student.password}`);
+            // console.log(`Does 'Byxpek7R' match? ${isMatch}`);
         } else {
             console.log("No student found with that email.");
         }

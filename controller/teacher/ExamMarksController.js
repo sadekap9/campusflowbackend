@@ -4,7 +4,6 @@ const db = require("../../config/db");
    1️⃣ GRADE EXAM SUBJECT MARKS (SUBJECT TEACHER ONLY)
 ========================================================= */
 exports.GradeExamMarks = async (req, res) => {
-  console.log("GradeExamMarks");
   try {
     const teacher_id = req.teacher.teacher_id;
     const {

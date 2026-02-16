@@ -2,8 +2,6 @@ const db = require("../../../config/db");
 
 exports.ListStudent = async (req, res) => {
   try {
-    console.log("ListStudent API hit");
-
     const [rows] = await db.query(`
       SELECT
         full_name,
@@ -39,14 +37,12 @@ exports.ListStudent = async (req, res) => {
         ON s.section_id = sp.section_id
       ORDER BY sp.created_at DESC
     `);
-    console.log("rows",rows)
 
     res.status(200).json({
       success: true,
       total: rows.length,
       students: rows
     });
-console.log(rows)
   } catch (error) {
     console.error("ListStudent error:", error);
     res.status(500).json({

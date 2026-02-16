@@ -4,8 +4,6 @@ const {sendStudentCredentials } = require("../../config/mailer")
 exports.registerStudentProfile = async (req, res) => {
  
   try {
-    console.log(req.body);
-    
     const {
       full_name,
       mother_name,

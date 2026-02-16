@@ -174,7 +174,6 @@ exports.GetAssignmentMarks = async (req, res) => {
    ========================================================= */
 exports.GiveDefaultZeroToAbsentees = async (req, res) => {
   try {
-    console.log("GiveDefaultZeroToAbsentees");
     const { assignment_id } = req.body;
     const teacher_id = req.teacher.teacher_id;
 
@@ -189,8 +188,6 @@ exports.GiveDefaultZeroToAbsentees = async (req, res) => {
     );
 
     if (!assignment) {
-      console.log("Assignment not found");
-      console.log(assignment);
       return res.status(404).json({ success: false, message: "Assignment not found" });
     }
 

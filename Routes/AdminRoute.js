@@ -51,7 +51,6 @@ const {
   GetTimetable,
   DeleteTimetable
 } = require("../controller/admin/TimetableController");
-//console.log("AdminRoute.js: AddTimetable import type:", typeof AddTimetable);
 
 const { UpdateTimetable } =
   require("../controller/admin/UpdateTimetable");
@@ -169,7 +168,6 @@ router.delete("/section/:section_id", DeleteSection);
 /* ---------- Timetable APIs ---------- */
 
 // Add timetable entry
-console.log("Registering POST /timetable");
 router.post("/timetable", AddTimetable);
 
 // Get timetable (class + section)
