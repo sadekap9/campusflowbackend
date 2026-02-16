@@ -27,14 +27,34 @@ exports.AssignSubjectToTeacher = async (req, res) => {
     }
 
     /* =========================
-       2️⃣ Check existing ACTIVE assignment
+       2️⃣ Check if teacher is already assigned to a DIFFERENT subject
+    ========================= */
+    const [teacherExisting] = await db.query(
+      `SELECT ts.subject_id, s.subject_name 
+       FROM teacher_subject ts
+       JOIN subjects s ON ts.subject_id = s.subject_id
+       WHERE ts.teacher_id = ? AND ts.status = 'active'
+       LIMIT 1`,
+      [teacher_id]
+    );
+
+    if (teacherExisting.length > 0 && teacherExisting[0].subject_id != subject_id) {
+      return res.status(400).json({
+        success: false,
+        message: `This teacher is already assigned to '${teacherExisting[0].subject_name}'. A teacher can only teach one subject across all classes.`
+      });
+    }
+
+    /* =========================
+       3️⃣ Check existing assignment for this CLASS and SUBJECT
     ========================= */
     const [existing] = await db.query(
       `SELECT teacher_subject_id, teacher_id
        FROM teacher_subject
        WHERE class_id = ?
-       AND subject_id = ?`,
-      [class_id,subject_id]
+       AND subject_id = ?
+       AND status = 'active'`,
+      [class_id, subject_id]
     );
 
     /* =========================
