@@ -51,7 +51,7 @@ exports.GradeExamMarks = async (req, res) => {
     ========================= */
     const [[exam]] = await db.query(
       `
-      SELECT exam_id
+      SELECT exam_id, status
       FROM exams
       WHERE exam_id = ? AND class_id = ?
       `,
@@ -62,6 +62,13 @@ exports.GradeExamMarks = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Exam does not belong to student's class"
+      });
+    }
+
+    if (exam.status !== 'completed') {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Marks can only be added if the exam status is 'completed'."
       });
     }
 
@@ -340,6 +347,120 @@ exports.GetClassTeacherMarks = async (req, res) => {
 
   } catch (error) {
     console.error("GetClassTeacherMarks Error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/* =========================================================
+   4️⃣ VIEW FULL STUDENT RESULT (CLASS TEACHER ONLY)
+   - Allows Class Teacher to see a student's full result for an exam.
+========================================================= */
+exports.GetStudentFullResult = async (req, res) => {
+  try {
+    const teacher_id = req.teacher.teacher_id;
+    const { exam_id, student_id } = req.query;
+
+    if (!exam_id || !student_id) {
+      return res.status(400).json({
+        success: false,
+        message: "exam_id and student_id are required"
+      });
+    }
+
+    /* 1️⃣ AUTHORIZATION Check: Is this the Class Teacher for this student? */
+    const [[studentInfo]] = await db.query(
+      `
+      SELECT sp.section_id, s.teacher_id AS class_teacher_id
+      FROM student_profile sp
+      JOIN sections s ON s.section_id = sp.section_id
+      WHERE sp.student_id = ?
+      `,
+      [student_id]
+    );
+
+    if (!studentInfo) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found or section not assigned."
+      });
+    }
+
+    if (studentInfo.class_teacher_id !== teacher_id) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: You are not the class teacher for this student."
+      });
+    }
+
+    /* 2️⃣ FETCH ALL MARKS FOR THE STUDENT IN THE EXAM */
+    const [marks] = await db.query(
+      `
+      SELECT
+        sub.subject_name,
+        m.marks_obtained,
+        es.max_marks,
+        es.passing_marks,
+        m.percentage,
+        m.grade,
+        m.status,
+        m.remarks,
+        t.name AS evaluated_by
+      FROM marks m
+      JOIN exam_subjects es ON es.exam_subject_id = m.exam_subject_id
+      JOIN subjects sub ON sub.subject_id = es.subject_id
+      LEFT JOIN teachers t ON t.teacher_id = m.evaluated_by
+      WHERE m.exam_id = ? AND m.student_id = ?
+      ORDER BY sub.subject_name
+      `,
+      [exam_id, student_id]
+    );
+
+    if (marks.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No marks found for this student in the specified exam."
+      });
+    }
+
+    /* 3️⃣ CALCULATE SUMMARY */
+    let totalObtained = 0;
+    let totalMax = 0;
+    let anyFailed = false;
+
+    marks.forEach(m => {
+      totalObtained += Number(m.marks_obtained);
+      totalMax += Number(m.max_marks);
+      if (m.status === 'failed') anyFailed = true;
+    });
+
+    const overallPercentage = ((totalObtained / totalMax) * 100).toFixed(2);
+    
+    let overallGrade = "F";
+    if (overallPercentage >= 90) overallGrade = "A+";
+    else if (overallPercentage >= 80) overallGrade = "A";
+    else if (overallPercentage >= 70) overallGrade = "B";
+    else if (overallPercentage >= 60) overallGrade = "C";
+    else if (overallPercentage >= 50) overallGrade = "D";
+    else if (overallPercentage >= 40) overallGrade = "E";
+
+    const overallStatus = anyFailed ? "failed" : "passed";
+
+    return res.status(200).json({
+      success: true,
+      student_id,
+      exam_id,
+      summary: {
+        total_obtained: totalObtained,
+        total_max: totalMax,
+        percentage: overallPercentage,
+        grade: overallGrade,
+        status: overallStatus
+      },
+      marks: marks
+    });
+
+  } catch (error) {
+    console.error("GetStudentFullResult Error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

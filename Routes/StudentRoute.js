@@ -37,6 +37,7 @@ router.get("/my-teachers/:student_id", authStudent, GetMyTeachers);
    EXAM ROUTES (PROTECTED)
    ========================= */
 router.get("/my-exams/:student_id", authStudent, GetMyExams);
+router.get("/my-exam-marks/:student_id", authStudent, GetMyExamMarks);
 
 /* =========================
    ASSIGNMENT ROUTES (PROTECTED)

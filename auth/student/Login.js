@@ -12,26 +12,30 @@ exports.StudentLogin = async (req, res) => {
       message: "Request body is missing" 
     });
   }
-  const { email, password } = req.body;
+    let { email, password } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email and password are required" 
+      });
+    }
 
-  if (!email || !password) {
-    return res.status(400).json({ 
-      success: false, 
-      message: "Email and password are required" 
-    });
-  }
+    email = email.trim();
+    password = password.trim();
 
-  try {
-    // 1️⃣ Find student by email
+    try {
+  
+    // 1️⃣ Find student by email or enrollment number
     const [rows] = await db.query(
-      "SELECT student_id, full_name, email, password, enrollment_no, status FROM student_profile WHERE email = ?",
-      [email]
+      "SELECT student_id, full_name, email, password, enrollment_no, status FROM student_profile WHERE email = ? OR enrollment_no = ?",
+      [email, email]
     );
 
     if (rows.length === 0) {
       return res.status(401).json({ 
         success: false, 
-        message: "Invalid email or password" 
+        message: "Invalid email or enrollment number" 
       });
     }
 
@@ -51,7 +55,7 @@ exports.StudentLogin = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ 
         success: false, 
-        message: "Invalid email or password" 
+        message: "Incorrect password" 
       });
     }
 
@@ -98,20 +102,20 @@ exports.StudentLogin = async (req, res) => {
  ========================= */
 exports.ForgotPassword = async (req, res) => {
   try {
-    const { email } = req.body || {};
+    let { email } = req.body || {};
     if (!email) {
       return res.status(400).json({
         success: false,
         message: "Email is required"
       });
     }
+    email = email.trim();
     // 1️⃣ Check if student exists AND is active in the database
     const [[student]] = await db.query(
       "SELECT student_id, email, status FROM student_profile WHERE email = ?",
       [email]
     );
     if (!student) {
-        console.log("Student not found");
       return res.status(404).json({
         success: false
         

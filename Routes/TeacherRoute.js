@@ -24,7 +24,7 @@ const {
   GiveDefaultZeroToAbsentees
 } = require("../controller/teacher/AssignmentMarksController");
 const { GetClassTeacherExams, GetSubjectTeacherExams } = require("../controller/teacher/ExamController");
-const { GradeExamMarks, GetSubjectTeacherMarks, GetClassTeacherMarks } = require("../controller/teacher/ExamMarksController");
+const { GradeExamMarks, GetSubjectTeacherMarks, GetClassTeacherMarks, GetStudentFullResult } = require("../controller/teacher/ExamMarksController");
 const { GetTeacherClassesAndSections } = require("../controller/teacher/TeacherClassController");
 const authTeacher = require("../middleware/authTeacher");
 const assignmentUpload = require("../middleware/assignmentUpload");
@@ -88,6 +88,7 @@ router.post("/assignment/marks/auto-zero", authTeacher, GiveDefaultZeroToAbsente
 router.post("/exam/marks", authTeacher, GradeExamMarks);
 router.get("/exam/marks/subject", authTeacher, GetSubjectTeacherMarks);
 router.get("/exam/marks/class", authTeacher, GetClassTeacherMarks);
+router.get("/exam/marks/student-result", authTeacher, GetStudentFullResult);
 
 /* =========================================================
    EXAM SCHEDULE ROUTES (PROTECTED)
