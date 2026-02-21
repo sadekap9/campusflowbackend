@@ -232,17 +232,26 @@ exports.DeleteExam = async (req, res) => {
  ========================= */
 exports.GetAllExams = async (req, res) => {
   try {
+    const { class_id } = req.query; 
+
     let query = `
       SELECT e.*, c.class_name 
       FROM exams e
       JOIN classes c ON e.class_id = c.class_id
     `;
 
+    const params = [];
+    if (class_id) {
+        query += " WHERE e.class_id = ? ";
+        params.push(class_id);
+    }
+     
+    query += " ORDER BY e.created_at DESC"; // Optional: sort by recent
 
-    const [rows] = await db.query(query);
+    const [rows] = await db.query(query, params);
     return res.status(200).json({
       success: true,
-      exams: rows
+      data: rows
     });
 
   } catch (error) {

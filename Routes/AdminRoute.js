@@ -85,6 +85,8 @@ const {
   getSubject
 } = require("../controller/admin/SubjectController");
 
+const { GetAllMarksSummary } = require("../controller/admin/MarksController");
+
 /* =========================================================
    ROUTES
 ========================================================= */
@@ -223,5 +225,7 @@ router.get("/subjects/:subject_id", getSubject);
 router.post("/subjects", addSubject);
 router.put("/subjects/:subject_id", updateSubject);
 router.delete("/subjects/:subject_id", deleteSubject);
+
+router.get("/marks/summary", GetAllMarksSummary);
 
 module.exports = router;

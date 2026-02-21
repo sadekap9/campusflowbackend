@@ -146,17 +146,19 @@ exports.GetAssignedTeachersByClass = async (req, res) => {
       SELECT
         ts.teacher_subject_id,
         ts.teacher_id,
+        t.name AS teacher_name,
+        t.profile_image,
         ts.class_id,
         ts.subject_id,
-        ts.created_at,
-        t.name AS teacher_name,
-        t.status,
-        IF(t.status = 0, 'Teacher is inactive', 'OK') AS message
+        s.subject_name,
+        s.subject_code,
+        ts.created_at
       FROM teacher_subject ts
-     
       JOIN teachers t ON ts.teacher_id = t.teacher_id
+      JOIN subjects s ON ts.subject_id = s.subject_id
       WHERE ts.class_id = ? 
       AND t.status = '1' 
+      ORDER BY s.subject_name ASC
       `,
       [class_id]
     );
@@ -167,7 +169,7 @@ exports.GetAssignedTeachersByClass = async (req, res) => {
       assignments: rows
     });
   } catch (error) {
-    console.error(error);
+    console.error("GetAssignedTeachersByClass error:", error);
     res.status(500).json({
       success: false,
       message: "Server error"

@@ -110,14 +110,14 @@ exports.GetMyExamMarks = async (req, res) => {
         m.percentage,
         m.grade,
         m.status,
-        m.remarks,
-        t.name as evaluated_by_name
+        m.remarks
       FROM marks m
       JOIN exams e ON e.exam_id = m.exam_id
       JOIN exam_subjects es ON es.exam_subject_id = m.exam_subject_id
       JOIN subjects sub ON sub.subject_id = es.subject_id
-      LEFT JOIN teachers t ON t.teacher_id = m.evaluated_by
-      WHERE m.student_id = ? AND m.exam_id = ?
+      WHERE m.student_id = ? 
+      AND m.exam_id = ?
+      AND e.status = 'completed'
     `;
 
     const params = [student_id, exam_id];
@@ -130,6 +130,21 @@ exports.GetMyExamMarks = async (req, res) => {
     query += " ORDER BY sub.subject_name ASC";
 
     const [marks] = await db.query(query, params);
+
+    // If no marks found, check if it's because the exam isn't completed
+    if (marks.length === 0) {
+       const [examStatus] = await db.query(
+         "SELECT status FROM exams WHERE exam_id = ?", 
+         [exam_id]
+       );
+       
+       if (examStatus.length > 0 && examStatus[0].status !== 'completed') {
+         return res.status(403).json({
+           success: false,
+           message: "Result is not yet declared. Please wait for the exam status to be 'completed'."
+         });
+       }
+    }
 
     res.status(200).json({
       success: true,
